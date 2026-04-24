@@ -1,4 +1,4 @@
-const API_BASE = 'https://GANTI-DENGAN-URL-RAILWAY-LU.up.railway.app';
+const API_BASE = 'https://iman-in-motion-production.up.railway.app/';
 
 async function sendChat(){
   const input = document.getElementById('chatInput');
