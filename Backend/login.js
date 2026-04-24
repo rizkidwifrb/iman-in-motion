@@ -3,10 +3,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "GANTI_DENGAN_API_KEY_KAMU",
-  authDomain: "iman-in-motion.firebaseapp.com",
-  projectId: "iman-in-motion",
-  appId: "1:xxx:web:xxx"
+  apiKey: "AIzaSyDi3zOmx6tf9MSCMp7HDlCk4-5QY4nZK7E",
+  authDomain: "uwiberani-project.firebaseapp.com",
+  projectId: "uwiberani-project",
+  storageBucket: "uwiberani-project.firebasestorage.app",
+  messagingSenderId: "735078024592",
+  appId: "1:735078024592:web:8e15bb85b0448402425f15",
+  measurementId: "G-DYW0J99V75"
 };
 
 const app = initializeApp(firebaseConfig);
