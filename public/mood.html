@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mood — IMAN IN MOTION</title>
+<meta name="description" content="Dalil Al-Qur'an dan film pilihan sesuai mood hatimu.">
+<link rel="icon" href="logo.png">
+<link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{background:#05070c;color:#e5e7eb;font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+.container{max-width:1100px;margin:0 auto;padding:28px}
+.top-bar{display:flex;align-items:center;justify-content:space-between;margin:24px 0 32px}
+.back{color:#14b8a6;text-decoration:none;font-weight:700;display:inline-flex;gap:8px;align-items:center}
+.back:hover{color:#5eead4}
+.dalil-box{background:linear-gradient(180deg,#0b1120 0%,#0a0f1c 100%);border:1px solid rgba(255,255,255,.08);border-radius:28px;padding:40px;box-shadow:0 20px 60px rgba(0,0,0,.45);position:relative;overflow:hidden}
+.dalil-box::before{content:"";position:absolute;inset:-1px;background:radial-gradient(400px 200px at 90% -20%,rgba(20,184,166,.15),transparent);pointer-events:none}
+.badge{display:inline-block;background:linear-gradient(90deg,#14b8a6,#f59e0b);padding:6px 14px;border-radius:999px;font-size:12px;font-weight:800;color:#000;letter-spacing:.5px;text-transform:uppercase}
+#mood-title{font-size:clamp(32px,5vw,48px);margin:16px 0 8px;font-weight:800;background:linear-gradient(180deg,#fff,#bffcf3);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.dalil-arab{font-size:clamp(1.8rem,4vw,2.6rem);line-height:1.9;text-align:right;font-family:'Amiri',serif;direction:rtl;margin:28px 0;color:#f0fdfa;text-shadow:0 2px 24px rgba(20,184,166,.25)}
+.dalil-arti{color:#cbd5e1;font-size:18px;line-height:1.7;max-width:800px}
+.dalil-surah{color:#f59e0b;margin-top:14px;font-weight:700;font-size:15px}
+.loading{opacity:.6;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+.section-title{font-size:26px;margin:56px 0 22px;font-weight:800;display:flex;align-items:center;gap:10px}
+.section-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.2),transparent)}
+.movies-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:22px}
+.movie-card{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);border-radius:18px;overflow:hidden;transition:.35s;cursor:pointer;backdrop-filter:blur(8px)}
+.movie-card:hover{transform:translateY(-6px);border-color:#14b8a6;box-shadow:0 16px 40px rgba(0,0,0,.5)}
+.movie-card img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#0b1120}
+.movie-info{padding:13px}
+.movie-info h4{margin:0 0 4px;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.movie-info p{margin:0;color:#9ca3af;font-size:13px}
+.ai-note{margin-top:24px;padding:14px 16px;background:rgba(20,184,166,.08);border-left:3px solid #14b8a6;border-radius:10px;font-size:14px;color:#a7f3d0;display:flex;gap:10px;align-items:center}
+.skeleton{height:320px;border-radius:18px;background:linear-gradient(90deg,#111827 25%,#1f2937 50%,#111827 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
+@keyframes shimmer{to{background-position:-200% 0}}
+.error-box{padding:20px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:14px;color:#fecaca;margin-top:20px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="top-bar">
+    <a href="/" class="back">← Kembali</a>
+    <div id="user-badge" style="font-size:13px;color:#9ca3af"></div>
+  </div>
+
+  <div class="dalil-box" aria-live="polite">
+    <span class="badge">Dalil Untukmu</span>
+    <h1 id="mood-title" class="loading">Memuat mood...</h1>
+    <div id="arab" class="dalil-arab loading">...</div>
+    <p id="arti" class="dalil-arti loading">Mengambil dalil terbaik dari server...</p>
+    <p id="surah" class="dalil-surah"></p>
+    <div id="ai-extra" class="ai-note" style="display:none">✨ Dipersonalisasi untuk hatimu hari ini</div>
+  </div>
+
+  <h2 class="section-title">🎬 Rekomendasi Film Sesuai Mood</h2>
+  <div id="movies" class="movies-grid">
+    <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+  </div>
+  <div id="error" class="error-box" style="display:none"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+// Firebase badge (opsional)
+try {
+  const auth = getAuth(initializeApp({
+    apiKey: "AIzaSyDi3zOmx6tf9MSCMp7HDlCk4-5QY4nZK7E",
+    authDomain: "uwiberani-project.firebaseapp.com",
+    projectId: "uwiberani-project"
+  }));
+  onAuthStateChanged(auth, u => {
+    if(u) document.getElementById('user-badge').textContent = `Hai, ${u.displayName?.split(' ')[0]||u.email}`;
+  });
+} catch(e){}
+
+const params = new URLSearchParams(location.search);
+const rawMood = params.get('mood') || 'Gelisah';
+
+// Normalisasi biar cocok dengan server.py
+const mood = rawMood;
+
+async function loadMood(){
+  try {
+    document.getElementById('mood-title').textContent = mood;
+    
+    const res = await fetch(`/api/mood?mood=${encodeURIComponent(mood)}`);
+    if(!res.ok) throw new Error('Server error');
+    
+    const data = await res.json();
+    
+    // Set dalil dari server
+    document.getElementById('arab').classList.remove('loading');
+    document.getElementById('arti').classList.remove('loading');
+    document.getElementById('mood-title').classList.remove('loading');
+    
+    document.getElementById('arab').textContent = data.dalil.arab;
+    document.getElementById('arti').textContent = data.dalil.arti;
+    document.getElementById('surah').textContent = data.dalil.surah;
+    document.getElementById('ai-extra').style.display = 'flex';
+    
+    // Render film dari dataset (SUDAH difilter by mood di server)
+    const moviesEl = document.getElementById('movies');
+    if(!data.films || data.films.length === 0){
+      moviesEl.innerHTML = `<p style="color:#9ca3af">Belum ada film untuk mood ini.</p>`;
+      return;
+    }
+    
+    moviesEl.innerHTML = data.films.map(m => `
+      <div class="movie-card" onclick="openDetail('${m.title}')">
+        <img src="${m.poster_url || m.poster}" alt="${m.title}" loading="lazy" onerror="this.src='https://via.placeholder.com/300x450?text=No+Image'">
+        <div class="movie-info">
+          <h4 title="${m.title}">${m.title_asli || m.title}</h4>
+          <p>${m.year || ''} • ${(m.genres||'').split('|')[0]}</p>
+        </div>
+      </div>
+    `).join('');
+    
+  } catch(err){
+    console.error(err);
+    document.getElementById('error').style.display = 'block';
+    document.getElementById('error').textContent = 'Gagal memuat data dari server. Pastikan server.py jalan di port 3002.';
+    document.getElementById('movies').innerHTML = '';
+    // fallback ke LOCAL
+    setDalilFallback();
+  }
+}
+
+function setDalilFallback(){
+  const LOCAL = {
+    "Sedih":{arab:"فَإِنَّ مَعَ الْعُسْرِ يُسْرًا",arti:"Sesungguhnya bersama kesulitan ada kemudahan.",surah:"QS. Al-Insyirah 94:6"},
+    "Gelisah":{arab:"أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ",arti:"Ingatlah, hanya dengan mengingat Allah hati menjadi tenteram.",surah:"QS. Ar-Ra'd 13:28"},
+  };
+  const d = LOCAL[mood] || LOCAL["Gelisah"];
+  document.getElementById('arab').textContent = d.arab;
+  document.getElementById('arti').textContent = d.arti;
+  document.getElementById('surah').textContent = d.surah;
+}
+
+function openDetail(title){
+  window.open(`https://www.netflix.com/search?q=${encodeURIComponent(title)}`, '_blank');
+}
+window.openDetail = openDetail;
+
+loadMood();
+</script>
+</body>
+</html>
