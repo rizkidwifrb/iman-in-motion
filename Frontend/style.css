@@ -1,3 +1,5 @@
+* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
 :root{
   --bg:#030505;
   --bg-2:#071210;
@@ -69,7 +71,7 @@ body{
 .btn-add{background:var(--card);color:var(--text);width:48px;border:1px solid var(--border);backdrop-filter:blur(10px);font-size:20px}
 .btn-add:hover{background:var(--card-2);border-color:var(--orange)}
 .hero-poster{position:relative;justify-self:end;transform:none;transition:.3s}
-.hero-poster:hover{transform:rotate(0) scale(1.03)}
+.hero-poster:hover{transform:scale(1.02)}
 .hero-poster img{width:340px;height:480px;object-fit:cover;border-radius:28px;border:1px solid rgba(255,255,255,.12);box-shadow:0 30px 70px rgba(0,0,0,.65)}
 .play-btn{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
