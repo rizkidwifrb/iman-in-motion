@@ -278,3 +278,13 @@ footer{margin-top:auto;border-top:1px solid var(--border);padding:48px 20px 36px
   .movie-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
   .movie-card img{height:220px}
 }
+
+/* FIX JUDUL KE-POTONG - JANGAN UBAH YANG LAIN */
+#heroTitle {
+  line-height: 1.25 !important;
+  padding-bottom: 0.12em !important;
+  overflow: visible !important;
+}
+@media (max-width:480px){
+  #heroTitle{font-size:2.4rem !important}
+}
