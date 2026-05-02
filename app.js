@@ -1,119 +1,81 @@
+// app.js - IMAN IN MOTION Node version
 const express = require('express');
-const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
-require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
+const GROQ_KEY = process.env.GROQ_API_KEY;
 
-app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
 
-// Load films
-let filmsData = [];
-const csvPath = path.join(__dirname, 'df_processed.csv');
-if (fs.existsSync(csvPath)) {
-  fs.createReadStream(csvPath)
-    .pipe(csv())
-    .on('data', (r) => {
-      if (r.poster_url) {
-        filmsData.push({
-          title: r.title_asli || '',
-          poster: r.poster_url,
-          year: parseInt(r.year) || 2020,
-          mood_tag: (r.mood || '').toLowerCase(),
-          genre: r.genres || '',
-          sinopsis: r.overview || '',
-          trailer: r.trailer_url || ''
-        });
-      }
-    })
-    .on('end', () => console.log(`âœ“ ${filmsData.length} film loaded`));
-}
+// Load film database
+let FILMS = [];
+fs.createReadStream('df_processed.csv')
+ .pipe(csv())
+ .on('data', (row) => {
+    if(row.title) FILMS.push({
+      title: row.title,
+      year: row.year || '',
+      poster: row.poster_url || row.poster || '',
+      mood: (row.mood || '').toLowerCase(),
+      reason: row.reason || 'Film yang menenangkan hati'
+    });
+  })
+ .on('end', () => console.log(`✓ ${FILMS.length} film loaded`));
 
-// Groq
-let groq = null;
-try {
-  const Groq = require('groq-sdk');
-  if (process.env.GROQ_API_KEY) {
-    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-    console.log('âœ“ Groq ready');
-  }
-} catch(e) { console.log('Groq skip:', e.message); }
+// Routes
+app.get('/', (req,res) => res.sendFile(path.join(__dirname,'public','index.html')));
+app.get('/aiman', (req,res) => res.sendFile(path.join(__dirname,'public','aiman.html')));
+app.get('/aiman.html', (req,res) => res.redirect('/aiman'));
 
-const MOOD_KEYWORDS = {
-  sedih: ['sedih','sakit hati','patah','kecewa','capek','down','nangis','galau'],
-  gelisah: ['cemas','khawatir','anxious','overthinking','takut','gelisah'],
-  bahagia: ['senang','bahagia','syukur','alhamdulillah'],
-  marah: ['marah','kesel','sebel','benci'],
-  rindu: ['rindu','kangen'],
-  'mencari hidayah': ['hijrah','taubat','hidayah'],
-  bingung: ['bingung','bimbang','ragu'],
-  insecure: ['insecure','minder']
-};
-function detectMood(text='') {
-  const tl = text.toLowerCase();
-  for (const [m, kws] of Object.entries(MOOD_KEYWORDS)) {
-    if (kws.some(k => tl.includes(k))) return m;
-  }
-  return 'netral';
-}
+app.get('/api/movies', (req,res) => res.json(FILMS));
+app.get('/health', (req,res) => res.json({status:'ok', films:FILMS.length, groq:!!GROQ_KEY}));
 
-const SYSTEM_PROMPT = `Kamu Aiman, teman dakwah digital 24 tahun untuk anak muda Indonesia. Pakai aku-kamu, hangat, validasi dulu baru solusi. WAJIB kutip Quran/Hadits dengan format: "Arab" (QS... ) Artinya:... Jangan ngarang dalil. Jawab 50-200 kata, akhiri aksi kecil.`;
-
-app.get('/health', (req,res) => res.json({status:'ok', films: filmsData.length, groq: !!groq}));
-
+// AIMAN Groq endpoint
 app.post('/api/chat', async (req,res) => {
-  const msg = (req.body.message || '').trim();
-  if (!msg) return res.json({reply:'Ketik dulu ya', mood:'netral', films:[]});
-  
-  const mood = detectMood(msg);
-  const tag = mood === 'bahagia' ? 'semangat' : 'tenang';
-  const filtered = filmsData.filter(f => f.mood_tag === tag);
-  const films = filtered.sort(() => 0.5 - Math.random()).slice(0,3);
+  const {message} = req.body;
+  if(!message) return res.json({reply:'Pesan kosong'});
 
-  let reply = 'Maaf, AIMAN lagi istirahat.';
-  if (groq) {
-    try {
-      const completion = await groq.chat.completions.create({
-        model: 'llama-3.1-8b-instant',
-        messages: [
-          {role:'system', content: SYSTEM_PROMPT},
-          {role:'user', content: msg}
+  // deteksi mood sederhana
+  const m = message.toLowerCase();
+  let mood = 'tenang';
+  if(/sedih|galau|down|nangis|sakit/.test(m)) mood='sedih';
+  else if(/gelisah|cemas|takut|khawatir|stress/.test(m)) mood='gelisah';
+  else if(/bahagia|senang|happy|syukur|alhamdulillah/.test(m)) mood='bahagia';
+  else if(/marah|kesal|emosi/.test(m)) mood='marah';
+
+  // cari film
+  const films = FILMS.filter(f=>f.mood.includes(mood)).slice(0,3);
+
+  // panggil Groq
+  let reply = '';
+  try{
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{
+        'Authorization':`Bearer ${GROQ_KEY}`,
+        'Content-Type':'application/json'
+      },
+      body: JSON.stringify({
+        model:'llama-3.1-8b-instant',
+        messages:[
+          {role:'system', content:`Kamu AIMAN, asisten IMAN IN MOTION. Jawab dengan hangat, singkat, pakai bahasa Indonesia sehari-hari. Selalu sertakan 1 dalil Qur'an dengan teks Arab singkat + terjemah. Akhiri jawaban dengan tag [MOOD:${mood}] [FILM:${films[0]?.title||''}]`},
+          {role:'user', content: message}
         ],
-        temperature: 0.7,
-        max_tokens: 800
-      });
-      reply = completion.choices[0].message.content;
-    } catch(e) {
-      console.error('Groq error:', e.message);
-      reply = 'Error Groq: ' + e.message;
-    }
-  } else {
-    reply = 'Set GROQ_API_KEY di Railway Variables dulu.';
+        temperature:0.7,
+        max_tokens:400
+      })
+    });
+    const data = await r.json();
+    reply = data.choices?.[0]?.message?.content || 'Aku di sini buat kamu.';
+  }catch(e){
+    reply = 'MasyaAllah, aku lagi susah konek. Coba lagi ya. [MOOD:'+mood+']';
   }
 
-  if (!reply.includes('[MOOD:')) reply += `\n\n[MOOD:${mood}]`;
   res.json({reply, mood, films});
 });
 
-app.get('/api/movies', (req,res) => {
-  const mood = req.query.mood;
-  const limit = parseInt(req.query.limit) || 50;
-  let data = filmsData;
-  if (mood) data = data.filter(f => f.mood_tag === mood.toLowerCase());
-  res.json(data.slice(0, limit));
-});
-
-app.get('/aiman', (req,res) => res.sendFile(path.join(__dirname,'public','aiman.html')));
-app.get('/mood', (req,res) => res.sendFile(path.join(__dirname,'public','mood.html')));
-app.get('*', (req,res) => {
-  const index = path.join(__dirname,'public','index.html');
-  if (fs.existsSync(index)) res.sendFile(index);
-  else res.json({message:'IMAN IN MOTION API'});
-});
-
-app.listen(PORT, '0.0.0.0', () => console.log(`Server jalan di port ${PORT}`));
+app.listen(PORT, ()=>console.log(`Server jalan di port ${PORT}\n✓ Groq ready`));
