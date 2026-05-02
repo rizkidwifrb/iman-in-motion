@@ -1,0 +1,16 @@
+{
+  "name": "iman-in-motion",
+  "version": "1.0.0",
+  "description": "AIMAN chat backend",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.0.0",
+    "dotenv": "^16.4.5",
+    "groq-sdk": "^0.7.0"
+  }
+}

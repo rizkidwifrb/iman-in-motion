@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>AIMAN — Asisten IMAN IN MOTION</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config={darkMode:'class',theme:{extend:{colors:{iman:{950:'#020a06',900:'#041b13',800:'#0a2e22',700:'#125c41',500:'#1a7a58'},gold:{DEFAULT:'#D4AF37',light:'#F0D27A',dark:'#A07C1A'},sand:'#F6F1E7',cream:'#FFFCF8'},fontFamily:{sans:['Inter','system-ui'],display:['Poppins','sans-serif'],arabic:['Amiri','serif']},boxShadow:{soft:'0 4px 14px -6px rgba(0,0,0,.18)',glow:'0 0 10px rgba(212,175,55,.10)',gold:'0 2px 6px rgba(212,175,55,.08)'}}}}
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+*{ -webkit-font-smoothing:antialiased }
+html,body{height:100%}
+body{font-family:Inter,system-ui}
+.font-display{font-family:Poppins,Inter,sans-serif}
+.font-arabic{font-family:Amiri,serif}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#D4AF3733;border-radius:99px}
+.chat-bubble{animation:in .4s cubic-bezier(.2,.8,.2,1)}@keyframes in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.glass{backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.islamic-bg{
+  background-color:#020a06;
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23D4AF37' stroke-opacity='0.07' stroke-width='1'%3E%3Cpath d='M100 20 L120 80 L180 80 L130 120 L150 180 L100 140 L50 180 L70 120 L20 80 L80 80 Z'/%3E%3Ccircle cx='100' cy='100' r='35'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(800px 400px at 80% -10%, rgba(212,175,55,.12), transparent 70%),
+    radial-gradient(600px 400px at 10% 110%, rgba(18,92,65,.25), transparent 60%);
+}
+.gold-border{position:relative}
+.gold-border:before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,#D4AF37,transparent 40%,#D4AF37);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+.shimmer{position:relative;overflow:hidden}
+.shimmer:after{content:"";position:absolute;inset:-200%;background:linear-gradient(110deg,transparent 40%,rgba(255,255,255,.15) 50%,transparent 60%);transform:translateX(-100%);animation:shine 6s infinite}
+@keyframes shine{to{transform:translateX(200%)}}
+.bismillah{opacity:.04;font-size:120px;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:0;font-family:Amiri,serif}
+</style>
+</head>
+<body class="aiman-pro bg-[#020a06] text-white h-screen overflow-hidden">
+<div class="h-screen flex relative">
+<div class="bismillah hidden lg:block">﷽</div>
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="w-[310px] shrink-0 hidden lg:flex flex-col relative z-10 bg-gradient-to-b from-black/90 via-[#041b13]/90 to-black/90 glass border-r border-gold/20 transition-all duration-300">
+    <div class="absolute inset-0 opacity-[0.03]" style="background-image:url('data:image/svg+xml,%3Csvg width=80 height=80 xmlns=http://www.w3.org/2000/svg%3E%3Cpath d=M40 0 L50 30 L80 30 L55 50 L65 80 L40 60 L15 80 L25 50 L0 30 L30 30 Z fill=none stroke=%23D4AF37 stroke-width=1/%3E%3C/svg%3E')"></div>
+    
+    <div class="h-[72px] flex items-center gap-3.5 px-4 border-b border-gold/15 relative">
+      <img src="logo.png" alt="logo" class="w-11 h-11 rounded-2xl object-contain bg-black/30 p-1.5 ring-1 ring-gold/30 shadow-gold shrink-0">
+      <div class="sidebar-label flex-1 min-w-0">
+        <div class="font-display font-extrabold text-[17px] tracking-wide leading-none text-white">A.IMAN</div>
+        <div class="text-[8px] text-white/60 font-medium tracking-widest uppercase">Asisten IMAN IN MOTION</div>
+      </div>
+      <button id="toggleSidebar" class="w-8 h-8 grid place-items-center rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition shrink-0" title="Minimize">
+        <svg id="toggleIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+    </div>
+    
+    <div class="p-3">
+      <button id="newChat" class="group w-full relative flex items-center gap-3 px-3 py-3 rounded-2xl bg-white/5 hover:bg-gold/15 border border-white/10 hover:border-gold/30 transition-all duration-300">
+        <div class="w-8 h-8 rounded-xl bg-gold/15 grid place-items-center group-hover:bg-gold/25 transition shrink-0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gold"><path d="M12 5v14M5 12h14"/></svg></div>
+        <span class="sidebar-label text-[14px] font-medium text-white">Obrolan Baru</span>
+      </button>
+    </div>
+
+    <div class="px-3 mt-3 flex-1 overflow-hidden flex flex-col sidebar-section">
+      <p class="px-2 text-[11px] uppercase tracking-widest text-white/40 mb-2 font-semibold sidebar-label">Riwayat</p>
+      <div id="historyList" class="space-y-1 overflow-y-auto pr-1 text-[13px]" style="max-height:calc(100vh-340px)">
+        <!-- history items injected here -->
+      </div>
+    </div>
+
+    <div class="mt-auto p-4 border-t border-white/10 relative">
+      <div class="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-[1px] bg-gradient-to-r from-transparent via-gold/50 to-transparent"></div>
+      <div id="userCard" class="flex items-center gap-3 cursor-pointer">
+        <div class="relative shrink-0">
+          <img id="userAvatar" src="https://ui-avatars.com/api/?name=Guest&background=D4AF37&color=020a06" class="w-10 h-10 rounded-xl ring-2 ring-gold/30"/>
+          <span class="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-black"></span>
+        </div>
+        <div class="flex-1 min-w-0 sidebar-label">
+          <div id="userName" class="text-[14px] font-semibold truncate text-white">Guest</div>
+          <div id="userRole" class="text-[11px] text-white/60">Hamba Allah</div>
+        </div>
+        <a href="/" class="sidebar-label w-8 h-8 grid place-items-center rounded-lg hover:bg-white/5 text-white/60 hover:text-white transition" title="Keluar">↗</a>
+      </div>
+      <p class="font-arabic text-center text-[15px] mt-3 text-white/30 leading-relaxed sidebar-label">وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا</p>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 flex flex-col min-w-0 relative islamic-bg">
+    <header class="h-[72px] flex items-center justify-between px-4 lg:px-8 border-b border-white/10 bg-black/40 glass sticky top-0 z-20">
+      <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-gold to-transparent opacity-60"></div>
+      <div class="flex items-center gap-4">
+        <button class="lg:hidden p-2.5 -ml-2 rounded-xl hover:bg-white/10" onclick="document.getElementById('sidebar').classList.toggle('!flex')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+        <div>
+          <h1 class="font-display font-bold text-[18px] leading-tight flex items-center gap-2.5 text-white">
+            Majelis AIMAN
+          </h1>
+          <p class="text-[12px] text-white/60 -mt-0.5 hidden sm:block">Asisten Islami • By Iman In Motion</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5">
+        <span class="hidden sm:inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 font-medium"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Live</span>
+        <button id="clearBtn" class="text-[13px] px-3.5 py-2 rounded-xl hover:bg-white/10 border border-white/10 hover:border-gold/30 transition font-medium text-white/80">Bersihkan</button>
+      </div>
+    </header>
+
+    <div id="messages" class="flex-1 overflow-y-auto px-4 lg:px-8 py-8 space-y-6 relative z-10">
+      <div class="max-w-3xl mx-auto">
+        <div class="chat-bubble flex gap-4">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#0a2e22] to-black grid place-items-center shrink-0 mt-1 shadow-glow border border-gold/20"><img src="logo.png" class="w-6 h-6 object-contain"></div>
+          <div class="flex-1">
+            <div class="relative bg-white/5 border border-white/10 rounded-[24px] rounded-tl-[8px] px-6 py-5 shadow-soft backdrop-blur-xl">
+              <p class="font-arabic text-right text-[22px] leading-relaxed text-gold/90 mb-2">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>
+              <p class="leading-relaxed text-[15px] text-white">Assalamualaikum <span id="welcomeName" class="font-semibold text-gold">sahabat</span>. Aku <b class="font-display">AIMAN</b>, teman hijrahmu. Ceritakan isi hatimu — sedih, gelisah, atau syukur — aku bantu carikan <span class="text-emerald-300 font-medium">dalil shahih</span> dan film yang menenangkan. InsyaAllah.</p>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-3 ml-1">
+              <button data-quick="Aku lagi sedih, butuh ketenangan" class="quick-btn text-[13px] px-3.5 py-2 rounded-full bg-white/5 hover:bg-gold/20 border border-white/10 hover:border-gold/30 transition font-medium text-white">😢 Sedih</button>
+              <button data-quick="Aku gelisah, pikiran tidak tenang" class="quick-btn text-[13px] px-3.5 py-2 rounded-full bg-white/5 hover:bg-gold/20 border border-white/10 hover:border-gold/30 transition text-white">😔 Gelisah</button>
+              <button data-quick="Aku ingin hijrah dan dekat dengan Allah" class="quick-btn text-[13px] px-3.5 py-2 rounded-full bg-white/5 hover:bg-gold/20 border border-white/10 hover:border-gold/30 transition text-white">🤲 Hidayah</button>
+              <button data-quick="Alhamdulillah hari ini bahagia" class="quick-btn text-[13px] px-3.5 py-2 rounded-full bg-white/5 hover:bg-gold/20 border border-white/10 hover:border-gold/30 transition text-white">😊 Syukur</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sticky bottom-0 z-20 bg-gradient-to-t from-[#020a06] via-[#020a06]/95 to-transparent pt-5 pb-[max(18px,env(safe-area-inset-bottom))]">
+      <div class="max-w-3xl mx-auto px-4 lg:px-0">
+        <form id="chatForm" class="relative group">
+          <div class="absolute -inset-[1px] rounded-[28px] bg-gradient-to-r from-gold/40 via-gold/20 to-gold/40 opacity-0 group-focus-within:opacity-100 blur-xl transition duration-500"></div>
+          <div class="relative flex items-end gap-2.5 bg-black/60 border border-white/15 group-focus-within:border-gold/50 rounded-[28px] shadow-gold p-2.5 backdrop-blur-2xl transition">
+            <textarea id="promptInput" rows="1" placeholder="Tulis perasaanmu dengan jujur..." class="flex-1 max-h-[160px] bg-transparent px-4 py-3 resize-none outline-none placeholder:text-white/40 text-[15px] leading-[24px] text-white"></textarea>
+            <button id="sendBtn" type="submit" class="w-11 h-11 grid place-items-center rounded-2xl bg-gradient-to-br from-gold to-gold-dark hover:from-gold-light hover:to-gold text-black shadow-gold transition disabled:opacity-40 shrink-0 hover:scale-105 active:scale-95">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </form>
+        <p class="text-[11px] text-center text-white/40 mt-3 font-medium tracking-wide">AIMAN • Jawaban berdasar dalil, verifikasi ke ustadz untuk hukum.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// AUTH
+const user = JSON.parse(localStorage.getItem('iman_user') || 'null');
+if(user){
+  document.getElementById('userName').textContent = user.name || 'Sahabat';
+  document.getElementById('userAvatar').src = user.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=D4AF37&color=020a06`;
+  document.getElementById('welcomeName').textContent = user.name.split(' ')[0];
+}
+
+// SIDEBAR TOGGLE - simplified 1 klik
+const sidebar = document.getElementById('sidebar');
+const toggleBtn = document.getElementById('toggleSidebar');
+const toggleIcon = document.getElementById('toggleIcon');
+let collapsed = false;
+toggleBtn.onclick = () => {
+  collapsed = !collapsed;
+  if(collapsed){
+    sidebar.classList.remove('w-[310px]'); sidebar.classList.add('w-[80px]');
+    document.querySelectorAll('.sidebar-label, .sidebar-section').forEach(el=>el.classList.add('hidden'));
+    toggleIcon.innerHTML = '<path d="M9 18l6-6-6-6"/>';
+  }else{
+    sidebar.classList.add('w-[310px]'); sidebar.classList.remove('w-[80px]');
+    document.querySelectorAll('.sidebar-label, .sidebar-section').forEach(el=>el.classList.remove('hidden'));
+    toggleIcon.innerHTML = '<path d="M15 18l-6-6 6-6"/>';
+  }
+};
+
+// CHAT
+const messages = document.getElementById('messages');
+const form = document.getElementById('chatForm');
+const input = document.getElementById('promptInput');
+const sendBtn = document.getElementById('sendBtn');
+
+// HISTORY
+function loadHistory(){
+  const list = document.getElementById('historyList');
+  const hist = JSON.parse(localStorage.getItem('iman_history')||'[]');
+  if(!hist.length){ list.innerHTML = '<div class="text-[12px] text-white/30 px-2 py-3 sidebar-label">Belum ada riwayat</div>'; return; }
+  list.innerHTML = hist.slice(0,20).map((h,i)=>`
+    <button onclick="loadChat(${i})" class="w-full text-left px-2.5 py-2 rounded-xl hover:bg-white/10 flex items-center gap-2 group">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-white/40 group-hover:text-gold shrink-0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="truncate sidebar-label text-white/70 group-hover:text-white">${h.title||'Obrolan'}</span>
+    </button>`).join('');
+}
+function saveToHistory(title){
+  const hist = JSON.parse(localStorage.getItem('iman_history')||'[]');
+  hist.unshift({title:title||'Obrolan baru',time:Date.now()});
+  localStorage.setItem('iman_history', JSON.stringify(hist.slice(0,50)));
+  loadHistory();
+}
+function loadChat(idx){ /* nanti bisa load dari storage */ location.reload(); }
+loadHistory();
+
+document.getElementById('clearBtn').onclick=()=>{if(confirm('Hapus semua percakapan?')){messages.innerHTML=messages.firstElementChild.outerHTML;localStorage.removeItem('iman_history');localStorage.removeItem('iman_chat');loadHistory()}};
+document.getElementById('newChat').onclick=()=>location.reload();
+</script>
+
+<!-- AUTH -->
+<div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden z-[200] items-center justify-center p-4">
+  <div class="bg-[#0b1511] border border-white/15 rounded-2xl w-full max-w-[360px] p-5 relative">
+    <button onclick="closeAuth()" class="absolute top-2.5 right-2.5 w-8 h-8 grid place-items-center rounded-lg hover:bg-white/10 text-white/50">×</button>
+    <h3 class="font-bold text-[17px] mb-1">Masuk AIMAN</h3>
+    <p class="text-white/60 text-[12px] mb-3">Login untuk simpan chat</p>
+    <div class="flex bg-black/40 rounded-xl p-1 mb-3">
+      <button id="tabMasuk" class="flex-1 py-1.5 text-[13px] rounded-lg bg-white/10">Masuk</button>
+      <button id="tabDaftar" class="flex-1 py-1.5 text-[13px] rounded-lg text-white/70">Daftar</button>
+    </div>
+    <form id="authForm" class="space-y-2.5">
+      <input id="authName" placeholder="Nama lengkap" style="display:none" class="w-full px-3 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white text-[14px] outline-none" />
+      <input id="authEmail" type="email" placeholder="Email" required class="w-full px-3 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white text-[14px] outline-none" />
+      <input id="authPass" type="password" placeholder="Password" required class="w-full px-3 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white text-[14px] outline-none" />
+      <div id="authError" class="text-red-400 text-[12px] min-h-[16px]"></div>
+      <button class="w-full py-2.5 rounded-xl bg-[#D4AF37] text-black font-medium">Lanjutkan</button>
+    </form>
+    <div class="flex items-center gap-2 my-3"><div class="h-px bg-white/10 flex-1"></div><span class="text-[11px] text-white/40">atau</span><div class="h-px bg-white/10 flex-1"></div></div>
+    <button id="authGoogleBtn" class="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center gap-2 text-[14px] hover:bg-white/10">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.18v2.96h5.27c-.23 1.42-1.6 4.16-5.27 4.16-3.17 0-5.76-2.63-5.76-5.87s2.59-5.87 5.76-5.87c1.81 0 3.02.77 3.71 1.43l2.53-2.44C16.9 3.5 14.68 2.4 12.17 2.4 6.7 2.4 2.4 6.7 2.4 12.23s4.3 9.83 9.77 9.83c5.64 0 9.38-3.96 9.38-9.54 0-.64-.07-1.12-.2-1.42z"/></svg> Google
+    </button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDi3zOmx6tf9MSCMp7HDlCk4-5QY4nZK7E",
+  authDomain: "uwiberani-project.firebaseapp.com",
+  projectId: "uwiberani-project",
+  storageBucket: "uwiberani-project.appspot.com",
+  messagingSenderId: "735078024592",
+  appId: "1:735078024592:web:8e15bb85b0448402425f15"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+const modal = document.getElementById('authModal');
+const tabMasuk = document.getElementById('tabMasuk');
+const tabDaftar = document.getElementById('tabDaftar');
+const form = document.getElementById('authForm');
+const nameIn = document.getElementById('authName');
+const emailIn = document.getElementById('authEmail');
+const passIn = document.getElementById('authPass');
+const err = document.getElementById('authError');
+const googleBtn = document.getElementById('authGoogleBtn');
+const userCard = document.getElementById('userCard');
+const userName = document.getElementById('userName');
+const userAvatar = document.getElementById('userAvatar');
+
+let isDaftar = false;
+function switchTab(d){isDaftar=d;tabMasuk.classList.toggle('bg-white/10',!d);tabDaftar.classList.toggle('bg-white/10',d);nameIn.style.display=d?'block':'none';nameIn.required=d;err.textContent='';}
+tabMasuk.onclick=()=>switchTab(false);tabDaftar.onclick=()=>switchTab(true);
+
+function openAuth(){modal.classList.remove('hidden');modal.style.display='flex';emailIn.focus();}
+function closeAuth(){modal.classList.add('hidden');modal.style.display='none';}
+window.closeAuth=closeAuth;
+
+userCard.onclick=()=>{if(auth.currentUser){if(confirm('Keluar?'))signOut(auth);}else{openAuth();switchTab(false);}};
+
+googleBtn.onclick=async()=>{try{await signInWithPopup(auth,provider);closeAuth();}catch(e){err.textContent='Google gagal';}};
+form.onsubmit=async(e)=>{e.preventDefault();err.textContent='';const email=emailIn.value.trim(),pass=passIn.value,name=nameIn.value.trim();if(!email||pass.length<6||(isDaftar&&!name)){err.textContent='Lengkapi data';return}try{if(isDaftar){const c=await createUserWithEmailAndPassword(auth,email,pass);await updateProfile(c.user,{displayName:name});}else{await signInWithEmailAndPassword(auth,email,pass);}form.reset();closeAuth();}catch(e){err.textContent=e.code.includes('email-already')?'Email sudah terdaftar':e.code.includes('invalid')?'Email/pass salah':'Error';}};
+
+onAuthStateChanged(auth,(u)=>{if(u){const n=u.displayName||u.email.split('@')[0];userName.textContent=n;userAvatar.src=u.photoURL||`https://ui-avatars.com/api/?name=${encodeURIComponent(n)}&background=D4AF37&color=000`;document.getElementById('welcomeName').textContent=n.split(' ')[0];localStorage.setItem('iman_user',JSON.stringify({uid:u.uid,name:n}));}else{userName.textContent='Guest';userAvatar.src='https://ui-avatars.com/api/?name=Guest&background=333&color=D4AF37';localStorage.removeItem('iman_user');}});
+</script>
+
+<script src="/js/app-chat-aiman.js"></script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      console.log('SW registered');
+    }).catch(err => console.log('SW failed', err));
+  });
+}
+
+<!-- LOGIN FLOW - IMAN IN MOTION -->
+<div id="loginModal" class="fixed inset-0 z-[100] bg-[#020a06] flex items-center justify-center p-4 overflow-y-auto">
+  <div class="w-full max-w-[420px] my-8">
+    
+    <!-- STEP 1: Welcome Screen -->
+    <div id="welcomeStep">
+      <div class="text-center mb-8">
+        <div class="w-20 h-20 mx-auto mb-5 rounded-2xl bg-black/40 border border-[#D4AF37]/30 grid place-items-center">
+          <img src="logo.png" class="w-12 h-12 object-contain">
+        </div>
+        <h1 class="font-display text-[28px] font-bold text-white">Masuk ke AIMAN</h1>
+        <p class="text-white/60 text-[14px] mt-1.5">Gunakan akun IMAN IN MOTION kamu</p>
+      </div>
+      <div class="bg-gradient-to-b from-[#0a1f17]/90 to-black/90 border border-[#D4AF37]/20 rounded-[28px] p-7 backdrop-blur-2xl">
+        <button id="toLoginBtn" class="w-full py-3.5 rounded-2xl bg-[#D4AF37] hover:bg-[#F0D27A] text-black font-semibold flex items-center justify-center gap-2 shadow-lg">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          Sign in with IMAN IN MOTION
+        </button>
+        <div class="relative my-6"><div class="absolute inset-0 flex items-center"><div class="w-full h-[1px] bg-white/10"></div></div><div class="relative flex justify-center"><span class="px-3 bg-[#0a1f17] text-white/40 text-xs">atau lanjut sebagai tamu</span></div></div>
+        <button id="guestBtn" class="w-full py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 text-[14px]">Lanjut sebagai Guest</button>
+        <p class="text-[11px] text-center text-white/30 mt-6">Dengan masuk, kamu setuju dengan adab penggunaan AIMAN</p>
+      </div>
+    </div>
+
+    <!-- STEP 2: Login Form -->
+    <div id="loginStep" class="hidden">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-black/40 border border-[#D4AF37]/30 grid place-items-center">
+          <img src="logo.png" class="w-10 h-10 object-contain">
+        </div>
+        <h1 class="font-display text-[24px] font-bold text-white">IMAN IN MOTION</h1>
+        <p class="text-white/50 text-xs mt-1">Masuk untuk akses AIMAN</p>
+      </div>
+      <div class="bg-gradient-to-b from-[#0a1f17]/90 to-black/90 border border-[#D4AF37]/25 rounded-[24px] p-6 backdrop-blur-2xl relative">
+        <h2 class="text-white font-semibold mb-4">Sign in with IMAN IN MOTION</h2>
+        <div class="space-y-3.5">
+          <div>
+            <label class="text-[11px] text-white/60 mb-1 block">Username/Email Iman In Motion</label>
+            <input id="imanEmail" type="text" placeholder="username kamu" class="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-[#D4AF37]/50 outline-none text-white placeholder:text-white/25 text-[14px]">
+          </div>
+          <div>
+            <label class="text-[11px] text-white/60 mb-1 block">Kata Sandi</label>
+            <input id="imanPassword" type="password" placeholder="••••••••" class="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-[#D4AF37]/50 outline-none text-white text-[14px]">
+          </div>
+        </div>
+        <div id="loginError" class="hidden mt-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-[12px]"></div>
+        <button id="imanLoginBtn" class="w-full mt-4 py-3 rounded-xl bg-[#D4AF37] hover:bg-[#F0D27A] text-black font-semibold flex items-center justify-center gap-1.5">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          Masuk
+        </button>
+        <button id="googleLoginBtn" class="w-full mt-2.5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-white text-[14px] flex items-center justify-center gap-2.5">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Lanjutkan dengan Google
+        </button>
+        <div class="mt-4 text-center">
+          <button id="toRegister" class="text-[12px] text-white/50 hover:text-[#D4AF37]">Belum punya akun? <span class="underline">Daftar IMAN IN MOTION</span></button>
+        </div>
+        <div class="mt-5 pt-4 border-t border-white/5"><p class="text-[11px] text-center text-white/35">Hanya akun iman in motion yang bisa akses AIMAN</p></div>
+        <button id="backToWelcome" class="absolute top-4 left-4 w-8 h-8 grid place-items-center rounded-lg hover:bg-white/10 text-white/60"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const modal = document.getElementById('loginModal');
+  const welcomeStep = document.getElementById('welcomeStep');
+  const loginStep = document.getElementById('loginStep');
+  
+  const saved = localStorage.getItem('iman_user');
+  if(saved){ try { initApp(JSON.parse(saved)); modal.remove(); return; } catch {} }
+
+  document.getElementById('toLoginBtn').onclick = () => { welcomeStep.classList.add('hidden'); loginStep.classList.remove('hidden'); };
+  document.getElementById('backToWelcome').onclick = () => { loginStep.classList.add('hidden'); welcomeStep.classList.remove('hidden'); };
+  document.getElementById('guestBtn').onclick = () => { const g={name:'Guest',avatar:'https://ui-avatars.com/api/?name=Guest&background=D4AF37&color=020a06'}; initApp(g); modal.remove(); };
+  document.getElementById('toRegister').onclick = () => { window.location.href = '/#daftar'; };
+
+  document.getElementById('imanLoginBtn').onclick = doLogin;
+  document.getElementById('imanPassword').addEventListener('keypress', e=>{if(e.key==='Enter')doLogin()});
+
+  function doLogin(){
+    const email=document.getElementById('imanEmail').value.trim();
+    const pass=document.getElementById('imanPassword').value;
+    const err=document.getElementById('loginError'); err.classList.add('hidden');
+    if(!email||!pass){ showErr('Isi username/email dan kata sandi'); return; }
+    let accounts=JSON.parse(localStorage.getItem('iman_accounts')||'[]');
+    let user=accounts.find(a=>(a.email===email||a.username===email)&&a.password===pass);
+    if(!user){
+      const existing=localStorage.getItem('iman_user');
+      if(existing){ user=JSON.parse(existing); }
+      else { user={name:email.split('@')[0],username:email,email:email.includes('@')?email:email+'@imaninmotion.id',password:pass,avatar:`https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=D4AF37&color=020a06`,provider:'iman_in_motion'}; accounts.push(user); localStorage.setItem('iman_accounts',JSON.stringify(accounts)); }
+    }
+    localStorage.setItem('iman_user',JSON.stringify(user));
+    localStorage.setItem('iman_token','iman_'+Date.now());
+    initApp(user); modal.remove();
+  }
+  document.getElementById('googleLoginBtn').onclick=()=>{ const name=prompt('Login Google - nama:')||'User'; const user={name,email:name.toLowerCase()+'@gmail.com',avatar:`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4285F4&color=fff`,provider:'google'}; localStorage.setItem('iman_user',JSON.stringify(user)); initApp(user); modal.remove(); };
+  function showErr(m){ const e=document.getElementById('loginError'); e.textContent=m; e.classList.remove('hidden'); }
+  function initApp(u){ document.getElementById('userName').textContent=u.name; document.getElementById('welcomeName').textContent=u.name; document.getElementById('userAvatar').src=u.avatar; document.getElementById('userRole').textContent='IMAN IN MOTION'; }
+})();
+</script>
+
+<script>
+// CHAT
+const messages = document.getElementById('messages');
+const form = document.getElementById('chatForm');
+const input = document.getElementById('promptInput');
+const sendBtn = document.getElementById('sendBtn');
+
+function md(txt){
+  return txt.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+           .replace(/\*(.*?)\*/g,'<em>$1</em>')
+           .replace(/\n/g,'<br>');
+}
+function addBubble(who, html){
+  const wrap = document.createElement('div');
+  wrap.className = 'max-w-3xl mx-auto';
+  wrap.innerHTML = who==='user'
+   ? `<div class="flex gap-4 justify-end"><div class="bg-gold/20 border border-gold/30 rounded-[24px] rounded-tr-[8px] px-5 py-3 max-w-[80%]"><p class="text-[14px]">${html}</p></div></div>`
+    : `<div class="chat-bubble flex gap-4"><div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#0a2e22] to-black grid place-items-center shrink-0 mt-1 border border-gold/20"><img src="logo.png" class="w-6 h-6"></div><div class="flex-1"><div class="bg-white/5 border border-white/10 rounded-[24px] rounded-tl-[8px] px-6 py-5">${html}</div></div></div>`;
+  messages.appendChild(wrap);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+async function sendChat(msg){
+  addBubble('user', md(msg));
+  input.value=''; input.style.height='auto'; sendBtn.disabled=true;
+
+  const typing = document.createElement('div'); typing.innerHTML=`<div class="max-w-3xl mx-auto"><div class="flex gap-4"><div class="w-10 h-10 rounded-2xl bg-black/40 grid place-items-center">...</div><div class="bg-white/5 px-5 py-3 rounded-2xl text-white/60 text-sm">AIMAN mengetik</div></div></div>`; messages.appendChild(typing);
+
+  try{
+    const r = await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+    const data = await r.json();
+    typing.remove();
+
+    let reply = data.reply || 'Maaf, lagi error.';
+    // parse tags
+    const mood = (reply.match(/\[MOOD:(.*?)\]/i)||[])[1];
+    const film = (reply.match(/\[FILM:(.*?)\]/i)||[])[1];
+    reply = reply.replace(/\[MOOD:.*?\]|\[FILM:.*?\]/gi,'').trim();
+
+    let filmCard='';
+    if(film && window.MOVIES){
+      const f = MOVIES.find(m=>m.title.toLowerCase()===film.toLowerCase());
+      if(f) filmCard = `<div onclick="location.href='mood.html?mood=${mood||'tenang'}'" class="mt-3 flex gap-3 p-3 bg-black/40 border border-white/10 rounded-xl cursor-pointer hover:border-gold/40"><img src="${f.poster}" class="w-12 h-[72px] object-cover rounded-lg"><div><div class="text-[13px] font-semibold">${f.title}</div><div class="text-[11px] text-white/50">${f.year}</div><div class="text-[11px] text-gold mt-1">▶ Lihat film</div></div></div>`;
+    }
+
+    addBubble('aiman', `<p class="leading-relaxed text-[15px]">${md(reply)}</p>${filmCard}`);
+    if(mood) localStorage.setItem('iman_last_mood', mood.toLowerCase());
+
+  }catch(e){ typing.remove(); addBubble('aiman','<p class="text-red-400">Koneksi putus, coba lagi.</p>'); }
+  sendBtn.disabled=false;
+}
+
+form.onsubmit = e=>{e.preventDefault(); const v=input.value.trim(); if(v) sendChat(v);};
+input.addEventListener('input',()=>{input.style.height='auto';input.style.height=input.scrollHeight+'px'});
+document.querySelectorAll('.quick-btn').forEach(b=>b.onclick=()=>sendChat(b.dataset.quick));
+</script>
+</body>
+</html>
