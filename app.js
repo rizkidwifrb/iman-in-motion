@@ -6,10 +6,13 @@ const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
 const cors = require('cors');
+const { execFileSync } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 const GROQ_KEY = process.env.GROQ_API_KEY;
+const CPP_RANKER_PATH = process.env.IIM_CPP_RANKER_PATH || path.join(__dirname, 'bin', process.platform === 'win32' ? 'iim_ranker.exe' : 'iim_ranker');
+let cppRankerUnavailable = false;
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
@@ -23,6 +26,178 @@ if (fs.existsSync(distPath)) {
 app.use(express.static(publicPath));
 
 // =========================
+// Trailer resolver (TMDB -> direct YouTube watch URL)
+// =========================
+const TMDB_KEY = process.env.TMDB_API_KEY || '';
+const TMDB_BEARER = process.env.TMDB_BEARER_TOKEN || process.env.TMDB_READ_TOKEN || '';
+const trailerCachePath = path.join(__dirname, 'data', 'trailer-cache.json');
+let TRAILER_CACHE = {};
+
+function loadTrailerCache() {
+  try {
+    if (fs.existsSync(trailerCachePath)) {
+      TRAILER_CACHE = JSON.parse(fs.readFileSync(trailerCachePath, 'utf8')) || {};
+    }
+  } catch (e) {
+    console.warn('[WARN] trailer cache gagal dibaca:', e.message);
+    TRAILER_CACHE = {};
+  }
+}
+
+function saveTrailerCache() {
+  try {
+    fs.mkdirSync(path.dirname(trailerCachePath), { recursive: true });
+    fs.writeFileSync(trailerCachePath, JSON.stringify(TRAILER_CACHE, null, 2));
+  } catch (e) {
+    console.warn('[WARN] trailer cache gagal disimpan:', e.message);
+  }
+}
+
+function pickBestTrailer(videos = []) {
+  const youtubeVideos = videos.filter((v) => String(v.site || '').toLowerCase() === 'youtube' && v.key);
+  const score = (v) => {
+    const type = String(v.type || '').toLowerCase();
+    const name = String(v.name || '').toLowerCase();
+    let value = 0;
+    if (type === 'trailer') value += 100;
+    if (type === 'teaser') value += 45;
+    if (name.includes('official')) value += 30;
+    if (name.includes('trailer')) value += 20;
+    if (name.includes('teaser')) value += 8;
+    if (String(v.official).toLowerCase() === 'true' || v.official === true) value += 15;
+    return value;
+  };
+  return youtubeVideos.sort((a, b) => score(b) - score(a))[0] || null;
+}
+
+async function fetchTmdbVideos(tmdbId) {
+  if (!tmdbId) return [];
+  if (!TMDB_KEY && !TMDB_BEARER) return [];
+  const url = TMDB_KEY
+    ? `https://api.themoviedb.org/3/movie/${encodeURIComponent(tmdbId)}/videos?api_key=${encodeURIComponent(TMDB_KEY)}`
+    : `https://api.themoviedb.org/3/movie/${encodeURIComponent(tmdbId)}/videos`;
+  const headers = TMDB_BEARER ? { Authorization: `Bearer ${TMDB_BEARER}` } : {};
+  const response = await fetch(url, { headers });
+  if (!response.ok) throw new Error(`TMDB videos gagal: ${response.status}`);
+  const data = await response.json();
+  return Array.isArray(data.results) ? data.results : [];
+}
+
+async function resolveTrailerUrl({ tmdbId, title, year }) {
+  const cacheKey = tmdbId ? `tmdb:${tmdbId}` : `title:${title || ''}:${year || ''}`;
+  if (TRAILER_CACHE[cacheKey]) return TRAILER_CACHE[cacheKey];
+  const videos = await fetchTmdbVideos(tmdbId);
+  const trailer = pickBestTrailer(videos);
+  if (!trailer) return null;
+  const result = {
+    trailer_url: `https://www.youtube.com/watch?v=${trailer.key}`,
+    trailer_embed_url: `https://www.youtube.com/embed/${trailer.key}`,
+    trailer_key: trailer.key,
+    trailer_name: trailer.name || 'Official Trailer',
+    source: 'tmdb-youtube'
+  };
+  TRAILER_CACHE[cacheKey] = result;
+  saveTrailerCache();
+  return result;
+}
+
+loadTrailerCache();
+
+
+// =========================
+// TMDB rating resolver (tmdbId -> vote_average/vote_count)
+// =========================
+const ratingCachePath = path.join(__dirname, 'data', 'tmdb-rating-cache.json');
+let RATING_CACHE = {};
+
+function loadRatingCache() {
+  try {
+    if (fs.existsSync(ratingCachePath)) {
+      RATING_CACHE = JSON.parse(fs.readFileSync(ratingCachePath, 'utf8')) || {};
+    }
+  } catch (e) {
+    console.warn('[WARN] rating cache gagal dibaca:', e.message);
+    RATING_CACHE = {};
+  }
+}
+
+function saveRatingCache() {
+  try {
+    fs.mkdirSync(path.dirname(ratingCachePath), { recursive: true });
+    fs.writeFileSync(ratingCachePath, JSON.stringify(RATING_CACHE, null, 2));
+  } catch (e) {
+    console.warn('[WARN] rating cache gagal disimpan:', e.message);
+  }
+}
+
+async function fetchTmdbDetail(tmdbId) {
+  if (!tmdbId) return null;
+  if (!TMDB_KEY && !TMDB_BEARER) return null;
+  const url = TMDB_KEY
+    ? `https://api.themoviedb.org/3/movie/${encodeURIComponent(tmdbId)}?api_key=${encodeURIComponent(TMDB_KEY)}&language=en-US`
+    : `https://api.themoviedb.org/3/movie/${encodeURIComponent(tmdbId)}?language=en-US`;
+  const headers = TMDB_BEARER ? { Authorization: `Bearer ${TMDB_BEARER}`, accept: 'application/json' } : {};
+  const response = await fetch(url, { headers });
+  if (!response.ok) throw new Error(`TMDB detail gagal: ${response.status}`);
+  return response.json();
+}
+
+async function resolveTmdbRating(tmdbId) {
+  const cacheKey = `tmdb:${tmdbId}`;
+  if (RATING_CACHE[cacheKey]) return RATING_CACHE[cacheKey];
+  const detail = await fetchTmdbDetail(tmdbId);
+  if (!detail) return null;
+  const voteAverage = Number(detail.vote_average || 0);
+  const voteCount = Number(detail.vote_count || 0);
+  const result = {
+    rating: voteAverage > 0 ? Number(voteAverage.toFixed(1)) : null,
+    vote_count: Number.isFinite(voteCount) ? voteCount : 0,
+    rating_source: voteAverage > 0 ? 'TMDB' : 'unrated',
+    rating_updated_at: new Date().toISOString().slice(0, 10),
+    tmdb_vote_average: voteAverage > 0 ? Number(voteAverage.toFixed(1)) : null,
+    tmdb_popularity: detail.popularity || 0,
+    tmdb_status: detail.status || '',
+    source: 'tmdb-detail'
+  };
+  RATING_CACHE[cacheKey] = result;
+  saveRatingCache();
+  return result;
+}
+
+loadRatingCache();
+
+app.get('/api/rating/:tmdbId', async (req, res) => {
+  try {
+    const tmdbId = String(req.params.tmdbId || '').trim();
+    if (!tmdbId) return res.status(400).json({ ok: false, message: 'tmdbId kosong.' });
+    const resolved = await resolveTmdbRating(tmdbId);
+    if (!resolved || !resolved.rating) {
+      return res.status(404).json({ ok: false, message: 'Rating TMDB belum tersedia. Pastikan TMDB_API_KEY, TMDB_READ_TOKEN, atau TMDB_BEARER_TOKEN sudah diset.' });
+    }
+    return res.json({ ok: true, ...resolved });
+  } catch (e) {
+    console.error('[ERROR] rating:', e.message);
+    return res.status(500).json({ ok: false, message: 'Gagal mengambil rating dari TMDB.' });
+  }
+});
+
+app.get('/api/trailer/:tmdbId', async (req, res) => {
+  try {
+    const tmdbId = String(req.params.tmdbId || '').trim();
+    const title = req.query.title || '';
+    const year = req.query.year || '';
+    const resolved = await resolveTrailerUrl({ tmdbId, title, year });
+    if (!resolved) {
+      return res.status(404).json({ ok: false, message: 'Trailer direct belum ditemukan. Pastikan TMDB_API_KEY, TMDB_READ_TOKEN, atau TMDB_BEARER_TOKEN sudah diset.' });
+    }
+    return res.json({ ok: true, ...resolved });
+  } catch (e) {
+    console.error('[ERROR] trailer:', e.message);
+    return res.status(500).json({ ok: false, message: 'Gagal mengambil trailer direct dari TMDB.' });
+  }
+});
+
+// =========================
 // Film database
 // =========================
 let FILMS = [];
@@ -33,6 +208,7 @@ if (fs.existsSync(csvPath)) {
     .on('data', (row) => {
       if (row.title_asli || row.title || row.title_en) {
         FILMS.push({
+          tmdbId: row.tmdbId || row.tmdb_id || row.tmdb || '',
           title: row.title_asli || row.title || row.title_en,
           title_en: row.title_en || '',
           year: row.year || '',
@@ -40,8 +216,13 @@ if (fs.existsSync(csvPath)) {
           cast: row.cast || '',
           poster: row.poster_url || row.poster || '',
           overview: row.overview || '',
-          rating: Number(row.rating || 0),
+          rating: Number(row.rating || row.vote_average || 0),
+          vote_count: Number(row.vote_count || row.voteCount || 0),
+          rating_source: row.rating_source || row.ratingSource || '',
+          rating_updated_at: row.rating_updated_at || '',
+          tmdb_vote_average: Number(row.tmdb_vote_average || row.vote_average || 0),
           mood: (row.mood || '').toLowerCase(),
+          trailer_url: row.trailer_url || row.trailer || '',
           reason: row.reason || 'Film yang menenangkan hati'
         });
       }
@@ -78,7 +259,6 @@ const STOPWORDS = new Set([
   'aku','saya','gue','gw','lagi','banget','bgt','yang','dan','atau','di','ke','dari','ini','itu','untuk','buat','dengan','karena','kalo','kalau','kok','ya','dong','deh','aja','nih','sih','pun','adalah','jadi','dalam','pada','sebagai','mau','ingin','pengen','butuh'
 ]);
 
-
 const RAG_ANCHORS = {
   gelisah: ["QS. Ar-Ra'd 13:28", 'QS. Al-Baqarah 2:38', 'QS. Az-Zumar 39:23'],
   sedih: ['QS. At-Taubah 9:40', 'QS. Yusuf 12:86', 'QS. Fussilat 41:30', 'QS. Al-Baqarah 2:153'],
@@ -86,6 +266,26 @@ const RAG_ANCHORS = {
   marah: ["QS. Ali 'Imran 3:134", 'Bukhari 5649', 'Abu Dawud 4151'],
   bahagia: ['QS. Ibrahim 14:7', 'QS. Ad-Duha 93:11'],
   rindu: ['QS. Al-Baqarah 2:156', "QS. Ar-Ra'd 13:28"]
+};
+
+const MOOD_SEMANTIC_PROFILES = {
+  sedih: 'sedih galau down nangis kecewa lelah kehilangan loneliness grief healing patience mercy hope acceptance sabar ikhlas keluarga',
+  gelisah: 'gelisah cemas takut panik overthinking resah anxiety fear calm peace tawakal aman perlindungan zikir',
+  hidayah: 'hidayah hijrah taubat iman spiritual journey redemption faith guidance prayer islam berubah memperbaiki diri',
+  bahagia: 'bahagia senang syukur joy gratitude family friendship comedy warm uplifting nikmat berbagi',
+  marah: 'marah kesal emosi anger rage conflict revenge justice forgiveness self control patience memaafkan',
+  rindu: 'rindu kangen kehilangan jauh longing memory home romance family distance reunion love nostalgia doa',
+  tenang: 'tenang damai aman refleksi calm peace family faith hope gratitude'
+};
+
+const FILM_GENRE_AFFINITY = {
+  sedih: { drama: 1, family: 0.62, romance: 0.42, documentary: 0.34 },
+  gelisah: { drama: 0.78, mystery: 0.5, thriller: 0.35, family: 0.28, documentary: 0.28 },
+  hidayah: { drama: 0.88, documentary: 0.62, history: 0.52, family: 0.46, adventure: 0.3 },
+  bahagia: { comedy: 0.95, family: 0.9, animation: 0.68, romance: 0.38, adventure: 0.34 },
+  marah: { drama: 0.72, crime: 0.68, action: 0.42, thriller: 0.38, history: 0.25 },
+  rindu: { romance: 0.84, family: 0.78, drama: 0.7, music: 0.28 },
+  tenang: { drama: 0.5, family: 0.48, documentary: 0.38 }
 };
 
 const MOOD_PROFILES = {
@@ -139,6 +339,68 @@ function tokensOf(text) {
     .split(' ')
     .filter((w) => w.length > 2 && !STOPWORDS.has(w))
     .slice(0, 28);
+}
+
+function tokensFull(text) {
+  return normalize(text)
+    .split(' ')
+    .filter((w) => w.length > 2 && !STOPWORDS.has(w));
+}
+
+function cosineFromTokens(aTokens = [], bTokens = []) {
+  const a = new Map();
+  const b = new Map();
+  aTokens.forEach((token) => a.set(token, (a.get(token) || 0) + 1));
+  bTokens.forEach((token) => b.set(token, (b.get(token) || 0) + 1));
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  a.forEach((value, token) => {
+    normA += value * value;
+    dot += value * (b.get(token) || 0);
+  });
+  b.forEach((value) => {
+    normB += value * value;
+  });
+  if (!normA || !normB) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+function bm25TermScore(docText = '', queryTokens = [], avgLength = 120) {
+  const docTokens = tokensFull(docText);
+  const lengthNorm = Math.max(0.35, docTokens.length / avgLength);
+  const counts = new Map();
+  docTokens.forEach((token) => counts.set(token, (counts.get(token) || 0) + 1));
+  const k1 = 1.45;
+  const b = 0.72;
+  return queryTokens.reduce((score, token) => {
+    const tf = counts.get(token) || 0;
+    if (!tf) return score;
+    return score + ((tf * (k1 + 1)) / (tf + k1 * (1 - b + b * lengthNorm)));
+  }, 0);
+}
+
+function tryCppRecommendedFilms(mood, limit = 3) {
+  if (process.env.IIM_DISABLE_CPP_RANKER === '1' || cppRankerUnavailable) return null;
+  if (!fs.existsSync(CPP_RANKER_PATH)) {
+    cppRankerUnavailable = true;
+    return null;
+  }
+  try {
+    const output = execFileSync(CPP_RANKER_PATH, ['--csv', csvPath, '--mood', mood, '--limit', String(limit)], {
+      cwd: __dirname,
+      encoding: 'utf8',
+      timeout: 1200,
+      windowsHide: true,
+      maxBuffer: 1024 * 1024
+    });
+    const parsed = JSON.parse(output);
+    return Array.isArray(parsed) && parsed.length ? parsed : null;
+  } catch (e) {
+    cppRankerUnavailable = true;
+    console.warn('[WARN] C++ ranker fallback ke JS:', e.message);
+    return null;
+  }
 }
 
 function detectMood(message = '') {
@@ -195,7 +457,7 @@ function retrieveRag(message = '', mood = 'tenang', limit = 5) {
 
   const scored = [];
   for (const doc of RAG_DOCS) {
-    let score = 0;
+    let score = bm25TermScore(doc.search, expanded, 90);
     for (const t of expanded) {
       if (doc.search.includes(t)) score += 1;
     }
@@ -224,6 +486,9 @@ function retrieveRag(message = '', mood = 'tenang', limit = 5) {
 }
 
 function recommendedFilms(mood) {
+  const cppFilms = tryCppRecommendedFilms(mood, 3);
+  if (cppFilms) return cppFilms;
+
   const related = {
     sedih: ['sedih', 'hidayah', 'rindu'],
     gelisah: ['gelisah', 'hidayah', 'sedih'],
@@ -233,15 +498,26 @@ function recommendedFilms(mood) {
     rindu: ['rindu', 'sedih', 'hidayah'],
     tenang: ['hidayah', 'bahagia', 'sedih']
   }[mood] || ['hidayah'];
+  const profileTokens = tokensFull(`${MOOD_SEMANTIC_PROFILES[mood] || MOOD_SEMANTIC_PROFILES.tenang} ${(MOOD_PROFILES[mood]?.rag || []).join(' ')}`);
+  const genreAffinity = FILM_GENRE_AFFINITY[mood] || FILM_GENRE_AFFINITY.tenang;
 
   return FILMS
     .map((f) => {
       const fm = normalize(f.mood || '');
+      const text = `${f.title} ${f.title_en || ''} ${f.genres || ''} ${f.overview || ''} ${f.cast || ''} ${f.reason || ''}`;
+      const semantic = cosineFromTokens(tokensFull(text), profileTokens);
+      const genres = String(f.genres || '').toLowerCase().split(/[|,]/).map((g) => g.trim()).filter(Boolean);
+      const affinity = genres.length
+        ? genres.reduce((score, genre) => score + (genreAffinity[genre] || 0), 0) / genres.length
+        : 0;
       const moodScore = related.some((r) => fm.includes(r)) ? 3 : fm.includes(mood) ? 4 : 0;
-      const ratingScore = Math.min(Number(f.rating || 0), 10) / 10;
+      const rating = Math.min(Number(f.rating || f.tmdb_vote_average || 0), 10);
+      const votes = Math.max(0, Number(f.vote_count || 0));
+      const bayesian = ((votes / (votes + 120)) * rating) + ((120 / (votes + 120)) * 6.7);
+      const ratingScore = bayesian / 10;
       const posterScore = f.poster ? 0.35 : -0.35;
-      const overviewScore = f.overview ? 0.15 : 0;
-      return { ...f, _score: moodScore + ratingScore + posterScore + overviewScore };
+      const overviewScore = f.overview ? Math.min(0.5, f.overview.length / 800) : -0.15;
+      return { ...f, _score: moodScore + (semantic * 5) + (affinity * 2.2) + ratingScore + posterScore + overviewScore };
     })
     .filter((f) => f._score > 0)
     .sort((a, b) => b._score - a._score)
@@ -280,7 +556,7 @@ function buildFallbackReply(message, mood, ragDocs, films) {
   return `${opener}${dalil}\n\n${step}${filmLine}`;
 }
 
-async function askGroq({ message, mood, intensity, ragDocs, films, history = [] }) {
+async function askGroq({ message, mood, intensity, ragDocs, films, history = [], mode = 'chat' }) {
   if (!GROQ_KEY) return null;
 
   const safeHistory = Array.isArray(history)
@@ -301,6 +577,20 @@ async function askGroq({ message, mood, intensity, ragDocs, films, history = [] 
   const dalilIntent = isDalilIntent(message);
   const hadithIntent = isHadithIntent(message);
   const dalilReferenceBlock = buildDalilReferenceBlock(ragDocs);
+
+  const isVoiceMode = mode === 'voice';
+  const voiceRules = isVoiceMode ? `
+
+MODE VOICE CALL:
+- Jawab pendek, tapi harus selesai utuh: 2 sampai 4 kalimat lengkap.
+- Jangan berhenti di tengah kata atau tengah kalimat. Tutup respons dengan tanda titik atau tanda tanya.
+- Untuk curhat: validasi singkat, beri satu langkah kecil, lalu tanya balik.
+- Lebih objektif, langsung ke inti, lalu akhiri dengan 1 pertanyaan balik yang natural.
+- Jangan menampilkan teks Arab panjang. Kalau user minta dalil/hadits, cukup sebut rujukannya, bacakan arti/maknanya dalam bahasa Indonesia, lalu beri penjelasan singkat.
+- Jangan membuat struktur panjang dengan banyak heading.
+- Hindari ceramah panjang, pembuka berlebihan, dan pengulangan. Prioritaskan percakapan dua arah.
+- Jangan pakai emoji.
+` : '';
 
   const system = `Kamu adalah AIMAN, teman ngobrol Islami dari web app IMAN IN MOTION.
 Gaya bicara: bahasa Indonesia santai, hangat, responsif, seperti teman refleksi yang memahami dakwah. Boleh pakai "aku" dan "kamu". Jangan terdengar seperti template atau mesin.
@@ -327,7 +617,7 @@ ATURAN KHUSUS KETIKA USER MEMINTA DALIL/AYAT/HADITS/DOA/DZIKIR/PANDANGAN ISLAM:
 - Kalau konteks berisi ayat Arab, tampilkan lafaz Arabnya.
 - Kalau konteks berisi hadits, boleh jadikan penguat setelah ayat.
 - Kalau tidak ada hadits yang tepat, jangan mengarang. Cukup bilang bahwa penguat utama yang tersedia adalah ayat tersebut.
-- Penjelasan jangan terlalu kaku: hubungkan dalil dengan kondisi hati user.
+- Penjelasan jangan terlalu kaku: hubungkan dalil dengan kondisi hati user.${voiceRules}
 
 Mood terdeteksi: ${mood}. Intensitas: ${intensity}/3.
 User sedang minta dalil/teks Islam: ${dalilIntent ? 'ya' : 'tidak'}. User sedang minta hadits: ${hadithIntent ? 'ya' : 'tidak'}.
@@ -355,7 +645,7 @@ Akhiri respons dengan tag metadata persis: [MOOD:${mood}] [FILM:${films[0]?.titl
       ],
       temperature: 0.82,
       top_p: 0.9,
-      max_tokens: 650
+      max_tokens: mode === 'voice' ? 240 : 650
     })
   });
 
@@ -365,6 +655,16 @@ Akhiri respons dengan tag metadata persis: [MOOD:${mood}] [FILM:${films[0]?.titl
   }
   const data = await response.json();
   return data.choices?.[0]?.message?.content || null;
+}
+
+
+function buildFullDalilReply(ragDocs, mood, films) {
+  const main = ragDocs[0];
+  const hadith = ragDocs.find((d) => d.type === 'hadith');
+  const hadithLine = hadith && hadith.ref !== main.ref
+    ? `\n\n**Penguat hadits**\n${hadith.ref}\n${hadith.arab || ''}\n${hadith.text || ''}`
+    : '';
+  return `**Dalil yang nyambung**\n${main.ref}\n\n**Ayat Arab / Hadits Arab**\n${main.arab || '-'}\n\n**Arti**\n${main.text || '-'}\n\n**Penjelasan singkat**\nDalil ini mengarahkan hati untuk melihat keadaan yang kamu ceritakan dengan lebih tenang. Islam tidak hanya memberi nasihat, tapi juga mengajak kita mengelola rasa dengan iman, sabar, syukur, tawakal, dan akhlak yang baik.\n\n**Pemahaman dakwah**\nDalam dakwah, dalil seperti ini menjadi pengingat yang lembut: hati tidak perlu dipaksa langsung kuat, tetapi dituntun pelan-pelan agar kembali dekat kepada Allah dan tindakan kita tetap terarah.\n\n**Langkah kecil**\nAmbil satu langkah yang ringan dulu: tenangkan napas, baca ulang maknanya, lalu pilih satu amal kecil yang bisa kamu lakukan hari ini.${hadithLine} [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
 }
 
 // =========================
@@ -380,6 +680,23 @@ app.get('/', sendFrontend);
 app.get('/aiman', sendFrontend);
 app.get('/aiman.html', (req, res) => res.redirect('/aiman'));
 app.get('/api/movies', (req, res) => res.json(FILMS));
+app.get('/api/ml/diagnostics', (req, res) => {
+  const mood = detectMood(String(req.query.q || ''));
+  res.json({
+    ok: true,
+    engine: 'hybrid-semantic-bm25-bayesian-v3',
+    native: {
+      cppRankerConfigured: fs.existsSync(CPP_RANKER_PATH),
+      cppRankerPath: CPP_RANKER_PATH,
+      cppRankerActive: fs.existsSync(CPP_RANKER_PATH) && process.env.IIM_DISABLE_CPP_RANKER !== '1' && !cppRankerUnavailable
+    },
+    features: ['optional-cpp-ranker', 'mood-intent-detection', 'semantic-film-ranking', 'bm25-rag-retrieval', 'bayesian-quality-score', 'genre-affinity'],
+    films: FILMS.length,
+    rag: RAG_DOCS.length,
+    detectedMood: mood,
+    sampleFilms: recommendedFilms(mood).map((film) => ({ title: film.title, mood: film.mood, rating: film.rating }))
+  });
+});
 app.get('/api/rag/search', (req, res) => {
   const q = String(req.query.q || '');
   const mood = detectMood(q);
@@ -389,7 +706,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok', films: FILMS.length, r
 
 // AIMAN chat v2
 app.post('/api/chat', async (req, res) => {
-  const { message, history } = req.body || {};
+  const { message, history, mode } = req.body || {};
   const cleanMessage = String(message || '').trim().slice(0, 2000);
   if (!cleanMessage) return res.status(400).json({ reply: 'Pesan kosong', mood: 'tenang', films: [] });
 
@@ -410,9 +727,15 @@ app.post('/api/chat', async (req, res) => {
 
   let reply = '';
   try {
-    reply = await askGroq({ message: cleanMessage, mood, intensity, ragDocs, films, history });
+    reply = await askGroq({ message: cleanMessage, mood, intensity, ragDocs, films, history, mode });
   } catch (e) {
     console.error('[WARN] Groq fallback:', e.message);
+  }
+
+  if (mode === 'voice' && isDalilIntent(cleanMessage) && ragDocs.length) {
+    // Voice mode tetap menyimpan jawaban lengkap ke chat.
+    // Komponen call akan membuat versi singkat khusus untuk dibacakan.
+    reply = buildFullDalilReply(ragDocs, mood, films);
   }
 
   if (!reply) {
@@ -422,9 +745,25 @@ app.post('/api/chat', async (req, res) => {
       const hadithLine = hadith && hadith.ref !== main.ref
         ? `\n\n**Penguat hadits**\n${hadith.ref}\n${hadith.arab || ''}\n${hadith.text || ''}`
         : '';
-      reply = `**Dalil yang nyambung**\n${main.ref}\n\n**Ayat Arab / Hadits Arab**\n${main.arab || '-'}\n\n**Arti**\n${main.text || '-'}\n\n**Penjelasan singkat**\nDalil ini mengarahkan hati untuk melihat keadaan yang kamu ceritakan dengan lebih tenang. Islam tidak hanya memberi nasihat, tapi juga mengajak kita mengelola rasa dengan iman, sabar, syukur, tawakal, dan akhlak yang baik.\n\n**Pemahaman dakwah**\nDalam dakwah, dalil seperti ini bisa menjadi jembatan: bukan memaksa orang langsung kuat, tapi menuntun pelan-pelan agar hati kembali dekat kepada Allah dan tindakan kita tetap terarah.\n\n**Langkah kecil**\nAmbil satu langkah yang ringan dulu: tenangkan napas, baca ulang maknanya, lalu pilih satu amal kecil yang bisa kamu lakukan hari ini.${hadithLine} [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
+      if (mode === 'voice') {
+        reply = `Rujukannya ${main.ref}. Artinya: ${main.text || '-'}. Intinya, Islam menuntun rasa ini supaya diarahkan dengan sabar, tawakal, dan langkah kecil yang baik. Mau aku bantu hubungkan dalil ini dengan keadaan kamu sekarang? [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
+      } else {
+        reply = `**Dalil yang nyambung**\n${main.ref}\n\n**Ayat Arab / Hadits Arab**\n${main.arab || '-'}\n\n**Arti**\n${main.text || '-'}\n\n**Penjelasan singkat**\nDalil ini mengarahkan hati untuk melihat keadaan yang kamu ceritakan dengan lebih tenang. Islam tidak hanya memberi nasihat, tapi juga mengajak kita mengelola rasa dengan iman, sabar, syukur, tawakal, dan akhlak yang baik.\n\n**Pemahaman dakwah**\nDalam dakwah, dalil seperti ini bisa menjadi jembatan: bukan memaksa orang langsung kuat, tapi menuntun pelan-pelan agar hati kembali dekat kepada Allah dan tindakan kita tetap terarah.\n\n**Langkah kecil**\nAmbil satu langkah yang ringan dulu: tenangkan napas, baca ulang maknanya, lalu pilih satu amal kecil yang bisa kamu lakukan hari ini.${hadithLine} [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
+      }
     } else {
-      reply = `${buildFallbackReply(cleanMessage, mood, ragDocs, films)} [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
+      if (mode === 'voice') {
+        const opener = {
+          sedih: 'Aku paham, kamu lagi berat.',
+          gelisah: 'Oke, kita pelanin dulu.',
+          hidayah: 'Keinginan berubah itu awal yang baik.',
+          bahagia: 'Alhamdulillah, itu rasa yang patut disyukuri.',
+          marah: 'Kita ambil jeda dulu sebelum bereaksi.',
+          rindu: 'Rindu itu wajar, apalagi kalau ada yang sangat berarti.'
+        }[mood] || 'Aku dengerin.';
+        reply = `${opener} Intinya, mulai dari satu langkah kecil yang bisa kamu lakukan sekarang. Kamu mau aku bantu arahkan ke dalil, film, atau langkah praktis dulu? [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
+      } else {
+        reply = `${buildFallbackReply(cleanMessage, mood, ragDocs, films)} [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
+      }
     }
   }
 

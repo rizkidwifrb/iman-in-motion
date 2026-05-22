@@ -59,6 +59,52 @@ function renderMoodMessage() {
   if (info) info.textContent = `Mood terdeteksi: ${moodLabel(selectedMood)}. Ini rekomendasi film yang bisa menemani dan menenangkan hati.`;
 }
 
+
+function toYoutubeEmbedUrl(url = '') {
+  const value = String(url || '').trim();
+  if (!value) return '';
+  const watchMatch = value.match(/[?&]v=([^&]+)/);
+  const shortMatch = value.match(/youtu\.be\/([^?&/]+)/);
+  const embedMatch = value.match(/youtube\.com\/embed\/([^?&/]+)/);
+  const key = watchMatch?.[1] || shortMatch?.[1] || embedMatch?.[1] || '';
+  return key ? `https://www.youtube.com/embed/${key}` : '';
+}
+
+async function getDirectTrailer(movie) {
+  if (movie.trailer_url || movie.trailer) {
+    const url = movie.trailer_url || movie.trailer;
+    return { trailer_url: url, trailer_embed_url: movie.trailer_embed_url || toYoutubeEmbedUrl(url) };
+  }
+  const tmdbId = movie.tmdbId || movie.tmdb_id || movie.tmdb;
+  if (!tmdbId) return null;
+  const params = new URLSearchParams({ title: movie.title_asli || movie.title || '', year: movie.year || '' });
+  const response = await fetch(`/api/trailer/${encodeURIComponent(tmdbId)}?${params.toString()}`);
+  if (!response.ok) return null;
+  return response.json();
+}
+
+function getRatingInfo(movie = {}) {
+  const rating = Number(movie.rating || movie.vote_average || movie.tmdb_vote_average || 0);
+  const voteCount = Number(movie.vote_count || movie.voteCount || 0);
+  const source = String(movie.rating_source || movie.ratingSource || '').trim();
+  const isTmdb = source.toLowerCase() === 'tmdb' || Number(movie.tmdb_vote_average || 0) > 0;
+  if (!Number.isFinite(rating) || rating <= 0) {
+    return { hasRating: false, label: 'Belum ada rating', meta: '' };
+  }
+  const label = `★ ${rating.toFixed(1)}/10${isTmdb ? ' TMDB' : ''}`;
+  const meta = voteCount > 0 ? `${voteCount.toLocaleString('id-ID')} vote${voteCount < 25 ? ' · data terbatas' : ''}` : '';
+  return { hasRating: true, label, meta };
+}
+
+async function getTmdbRating(movie) {
+  const tmdbId = movie.tmdbId || movie.tmdb_id || movie.tmdb;
+  if (!tmdbId) return null;
+  if (String(movie.rating_source || '').toLowerCase() === 'tmdb' && movie.vote_count) return null;
+  const response = await fetch(`/api/rating/${encodeURIComponent(tmdbId)}`);
+  if (!response.ok) return null;
+  return response.json();
+}
+
 function openModal(id) { byId(id)?.classList.remove('hidden'); }
 function closeModal(id) { byId(id)?.classList.add('hidden'); }
 
@@ -90,7 +136,8 @@ function openDetail(movie) {
 
   const title = movie.title_asli || movie.title || 'Tanpa Judul';
   const poster = movie.poster_url || movie.poster || 'https://placehold.co/400x600/0d1413/b9d4ce?text=Poster';
-  const meta = [movie.year || '-', movie.genres || movie.genre || 'Drama', `Rating ${Number(movie.rating || 0).toFixed(1)}`].join(' | ');
+  const ratingInfo = getRatingInfo(movie);
+  const meta = [movie.year || '-', movie.genres || movie.genre || 'Drama', ratingInfo.label].join(' | ');
 
   body.innerHTML = `
     <div class="detail-grid">
@@ -98,12 +145,37 @@ function openDetail(movie) {
       <div>
         <h3 style="margin:0 0 8px">${escapeHtml(title)}</h3>
         <p style="margin:0 0 10px;color:var(--muted)">${escapeHtml(meta)}</p>
+        <p id="ratingLiveMeta" style="margin:-4px 0 12px;color:var(--muted);font-size:12px;font-weight:700">${escapeHtml(ratingInfo.meta || (movie.tmdbId || movie.tmdb_id || movie.tmdb ? 'Sinkron rating TMDB...' : ''))}</p>
         <p style="line-height:1.65">${escapeHtml(movie.overview || 'Belum ada sinopsis.')}</p>
+        <div id="trailerBox" style="margin:14px 0"><button class="btn" type="button" disabled>Mencari trailer...</button></div>
         <p class="reason"><strong>Kenapa direkomendasikan?</strong> ${escapeHtml(movie.reason || `Temanya sesuai dengan suasana ${moodLabel(selectedMood)} dan cocok untuk refleksi.`)}</p>
       </div>
     </div>
   `;
   openModal('detailModal');
+  getTmdbRating(movie).then((data) => {
+    if (!data?.rating) return;
+    Object.assign(movie, data);
+    const ratingLiveMeta = byId('ratingLiveMeta');
+    const live = getRatingInfo(movie);
+    if (ratingLiveMeta) ratingLiveMeta.textContent = live.meta || 'Rating disinkronkan dari TMDB.';
+  });
+  getDirectTrailer(movie).then((data) => {
+    const box = byId('trailerBox');
+    if (!box) return;
+    if (data?.trailer_embed_url) {
+      box.innerHTML = `
+        <div class="trailer-inline" style="overflow:hidden;border-radius:18px;background:#000;aspect-ratio:16/9;box-shadow:0 18px 40px rgba(0,0,0,.24)">
+          <iframe title="Trailer ${escapeHtml(title)}" src="${escapeHtml(data.trailer_embed_url)}" style="width:100%;height:100%;border:0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        </div>
+        <p style="margin:8px 0 0;color:var(--muted);font-size:12px;font-weight:700">Trailer diputar langsung di IMAN IN MOTION.</p>
+      `;
+    } else if (data?.trailer_url) {
+      box.innerHTML = `<button class="btn secondary" type="button" disabled>Trailer ditemukan, tapi embed belum tersedia</button>`;
+    } else {
+      box.innerHTML = '<button class="btn secondary" type="button" disabled>Trailer belum tersedia</button>';
+    }
+  });
 }
 
 async function loadMovies() {

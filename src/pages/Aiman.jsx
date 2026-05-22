@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Send, Sparkles } from 'lucide-react';
+import { PhoneCall, Send } from 'lucide-react';
 import { sendAimanMessage } from '../services/api';
+import AimanCallMode from '../components/AimanCallMode';
 
 function readParams() {
   return new URLSearchParams(window.location.hash.split('?')[1] || '');
@@ -35,19 +36,23 @@ function formatContent(text = '') {
   });
 }
 
+const characterAvatar = '/aiman-character.png';
+const defaultIntro = 'Assalamualaikum. Aku AIMAN. Ceritain aja pelan-pelan kondisi hati kamu. Kalau kamu minta dalil, aku usahakan kasih ayat atau hadits Arab, artinya, lalu penjelasan dan pemahaman dakwahnya dengan bahasa yang mudah dipahami.';
+const defaultFollowUp = 'Hai! Apa yang sedang terjadi dalam hati kamu? Kamu ingin berbicara tentang sesuatu?';
+
 export default function Aiman() {
   const params = useMemo(() => readParams(), []);
   const mood = params.get('mood') || '';
   const film = params.get('film') || '';
   const initial = film ? `Aku mau refleksi tentang film ${film}${mood ? ` untuk mood ${mood}` : ''}.` : '';
   const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: 'Assalamualaikum. Aku AIMAN. Ceritain aja pelan-pelan kondisi hati kamu. Kalau kamu minta dalil, aku usahakan kasih ayat atau hadits Arab, artinya, lalu penjelasan dan pemahaman dakwahnya dengan bahasa yang mudah dipahami.'
-    }
+    { role: 'assistant', content: defaultIntro },
+    { role: 'user', content: 'Hai aiman' },
+    { role: 'assistant', content: defaultFollowUp }
   ]);
   const [input, setInput] = useState(initial);
   const [loading, setLoading] = useState(false);
+  const [callOpen, setCallOpen] = useState(false);
   const boxRef = useRef(null);
   const endRef = useRef(null);
   const textareaRef = useRef(null);
@@ -62,6 +67,12 @@ export default function Aiman() {
   }
 
   useEffect(() => {
+    scrollToLatest('auto');
+    const timer = setTimeout(() => scrollToLatest('auto'), 180);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     scrollToLatest('smooth');
     const timer = setTimeout(() => scrollToLatest('auto'), 120);
     return () => clearTimeout(timer);
@@ -71,24 +82,34 @@ export default function Aiman() {
     textareaRef.current?.focus();
   }, []);
 
+  async function sendToAiman(text, { clearInput = false, voiceMode = false } = {}) {
+    const clean = text.trim();
+    if (!clean || loading) return '';
+    const next = [...messages, { role: 'user', content: clean }];
+    setMessages(next);
+    if (clearInput) setInput('');
+    setLoading(true);
+    scrollToLatest('auto');
+    try {
+      const data = await sendAimanMessage(clean, next.slice(-8), voiceMode ? { mode: 'voice' } : {});
+      const reply = data.reply || data.answer || data.text || 'Aku dengerin. Coba ceritain sedikit lagi biar aku bisa nangkep konteksnya.';
+      const cleanText = cleanReply(reply);
+      setMessages((current) => [...current, { role: 'assistant', content: cleanText, films: data.films || [], mood: data.mood }]);
+      return { reply: cleanText, mood: data.mood, films: data.films || [], rag: data.rag || [] };
+    } catch (error) {
+      const errorText = error.message || 'AIMAN belum bisa terhubung. Pastikan backend sudah jalan dengan npm start dan GROQ_API_KEY sudah ada di .env.';
+      setMessages((current) => [...current, { role: 'assistant', content: errorText }]);
+      throw new Error(errorText);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleSend(e) {
     e?.preventDefault?.();
     const text = input.trim();
     if (!text || loading) return;
-    const next = [...messages, { role: 'user', content: text }];
-    setMessages(next);
-    setInput('');
-    setLoading(true);
-    scrollToLatest('auto');
-    try {
-      const data = await sendAimanMessage(text, next.slice(-8));
-      const reply = data.reply || data.answer || data.text || 'Aku dengerin. Coba ceritain sedikit lagi biar aku bisa nangkep konteksnya.';
-      setMessages((current) => [...current, { role: 'assistant', content: cleanReply(reply), films: data.films || [], mood: data.mood }]);
-    } catch (error) {
-      setMessages((current) => [...current, { role: 'assistant', content: error.message || 'AIMAN belum bisa terhubung. Pastikan backend sudah jalan dengan npm start dan GROQ_API_KEY sudah ada di .env.' }]);
-    } finally {
-      setLoading(false);
-    }
+    await sendToAiman(text, { clearInput: true });
   }
 
   function handleKeyDown(e) {
@@ -110,21 +131,33 @@ export default function Aiman() {
       <div className="aiman-shell">
         <aside className="aiman-side">
           <a href="#/" className="flex items-center gap-3">
-            <img src="/logo.png" alt="IMAN IN MOTION" className="h-11 w-11 rounded-2xl bg-iim-cream object-contain p-1" />
+            <img src={characterAvatar} alt="Karakter AIMAN" className="h-14 w-14 rounded-[1.15rem] object-contain p-1.5 shadow-glow" />
             <div>
               <p className="text-sm font-black tracking-[0.18em] text-white">AIMAN</p>
-              <p className="text-xs font-semibold text-white/55">Teman refleksi</p>
+              <p className="text-xs font-semibold text-white/55">Teman ngobrol reflektif</p>
             </div>
           </a>
 
-          <div className="mt-7 rounded-3xl border border-white/10 bg-white/[0.06] p-5">
+          <button
+            type="button"
+            onClick={() => setCallOpen(true)}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-3xl border border-iim-gold/30 bg-iim-gold px-4 py-3 text-sm font-black text-iim-charcoal shadow-glow transition hover:-translate-y-0.5"
+          >
+            <PhoneCall size={17} />
+            <span>Telepon AIMAN</span>
+          </button>
+
+          <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.06] p-5">
             <p className="text-xs font-black uppercase tracking-[0.24em] text-iim-gold">Mulai ngobrol</p>
             <div className="mt-4 grid gap-2">
               {quickPrompts.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
-                  onClick={() => setInput(prompt)}
+                  onClick={() => {
+                    setInput(prompt);
+                    textareaRef.current?.focus();
+                  }}
                   className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-left text-sm font-semibold leading-6 text-white/80 transition hover:border-iim-gold hover:text-iim-gold"
                 >
                   {prompt}
@@ -142,22 +175,27 @@ export default function Aiman() {
         <main className="aiman-chat-panel">
           <header className="aiman-chat-header">
             <div className="flex min-w-0 items-center gap-3">
-              <img src="/logo.png" alt="AIMAN" className="h-10 w-10 rounded-2xl bg-iim-cream object-contain p-1" />
+              <img src={characterAvatar} alt="AIMAN" className="h-11 w-11 rounded-2xl object-contain p-1" />
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.26em] text-iim-gold">AIMAN Chat</p>
                 <h1 className="mt-1 truncate text-2xl font-black text-white md:text-3xl">Ruang ngobrol yang tenang.</h1>
               </div>
             </div>
-            <div className="hidden rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-bold text-white/65 sm:block">
-              {mood ? `Mood: ${mood}` : 'Online'}
-            </div>
+            <button
+              type="button"
+              onClick={() => setCallOpen(true)}
+              className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-bold text-white/80 transition hover:border-iim-gold hover:text-iim-gold sm:inline-flex"
+            >
+              <PhoneCall size={14} />
+              <span>Telepon AIMAN</span>
+            </button>
           </header>
 
           <div ref={boxRef} className="aiman-messages">
             {messages.map((message, index) => (
               <div key={index} className={`aiman-row ${message.role === 'user' ? 'user' : 'assistant'}`}>
                 {message.role === 'assistant' && (
-                  <div className="aiman-avatar"><Sparkles size={18} /></div>
+                  <div className="aiman-avatar"><img src={characterAvatar} alt="AIMAN" /></div>
                 )}
                 <div className="aiman-bubble">
                   <div className="text-sm leading-7 md:text-[15px]">{formatContent(message.content)}</div>
@@ -165,7 +203,7 @@ export default function Aiman() {
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
                       {message.films.slice(0, 2).map((filmItem) => (
                         <a key={filmItem.title} href={`#/film?mood=${message.mood || ''}`} className="rounded-2xl border border-iim-gold/20 bg-iim-gold/10 p-3 text-xs font-bold text-iim-cream transition hover:border-iim-gold">
-                          🎬 {filmItem.title} {filmItem.year ? `(${filmItem.year})` : ''}
+                          {filmItem.title} {filmItem.year ? `(${filmItem.year})` : ''}
                         </a>
                       ))}
                     </div>
@@ -175,7 +213,7 @@ export default function Aiman() {
             ))}
             {loading && (
               <div className="aiman-row assistant">
-                <div className="aiman-avatar"><Sparkles size={18} /></div>
+                <div className="aiman-avatar"><img src={characterAvatar} alt="AIMAN" /></div>
                 <div className="aiman-bubble typing"><span /> <span /> <span /></div>
               </div>
             )}
@@ -197,6 +235,13 @@ export default function Aiman() {
           </form>
         </main>
       </div>
+
+      <button type="button" className="aiman-mobile-call-button" onClick={() => setCallOpen(true)}>
+        <PhoneCall size={17} />
+        <span>Telepon AIMAN</span>
+      </button>
+
+      <AimanCallMode open={callOpen} onClose={() => setCallOpen(false)} onSendVoice={(text) => sendToAiman(text, { voiceMode: true })} />
     </section>
   );
 }

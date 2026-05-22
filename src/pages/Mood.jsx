@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import FilmCard from '../components/FilmCard';
+import { MoodFilmGridSkeleton } from '../components/Skeletons';
 import { MOODS, getGenres, getMoodByKey, searchMovies } from '../services/recommendationService';
+import useMoodStats from '../hooks/useMoodStats';
+import { useLanguageCopy } from '../utils/i18n';
 
 function getInitialMood() {
   const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
@@ -13,7 +16,14 @@ export default function Mood() {
   const [genre, setGenre] = useState('');
   const [sort, setSort] = useState('recommended');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [gridLoading, setGridLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const perPage = 18;
+  const { text } = useLanguageCopy();
+  const ui = text.ui;
   const genres = useMemo(() => getGenres(), []);
+  const { trackMood } = useMoodStats();
+  const trackedInitial = useRef('');
   const mood = getMoodByKey(currentMood);
 
   useEffect(() => {
@@ -33,19 +43,33 @@ export default function Mood() {
   };
 
   const movies = useMemo(() => {
-    return searchMovies({ query, mood: currentMood, genre, sort }).slice(0, 80);
+    return searchMovies({ query, mood: currentMood, genre, sort });
   }, [query, currentMood, genre, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(movies.length / perPage));
+  const visibleMovies = useMemo(() => {
+    const start = (page - 1) * perPage;
+    return movies.slice(start, start + perPage);
+  }, [movies, page, perPage]);
+
+  useEffect(() => {
+    setPage(1);
+    setGridLoading(true);
+    const timer = window.setTimeout(() => setGridLoading(false), 240);
+    return () => window.clearTimeout(timer);
+  }, [query, currentMood, genre, sort]);
+
+  useEffect(() => {
+    if (trackedInitial.current === currentMood) return;
+    trackedInitial.current = currentMood;
+    trackMood(currentMood, { movieCount: movies.length });
+  }, [currentMood, movies.length, trackMood]);
 
   function chooseMood(key) {
     setCurrentMood(key);
     setMenuOpen(false);
     localStorage.setItem('iman_last_mood', key);
     window.history.replaceState(null, '', `#/mood?mood=${encodeURIComponent(key)}`);
-    requestAnimationFrame(() => {
-      const target = document.querySelector('.mood-dalil-box');
-      const top = (target?.getBoundingClientRect().top || 0) + window.scrollY - 94;
-      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-    });
   }
 
   return (
@@ -53,7 +77,7 @@ export default function Mood() {
       <aside className="mood-sidebar">
         <div className="mood-sidebar-top">
           <div className="flex items-center gap-2 text-sm font-extrabold text-white/70">
-            <a href="#/" className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 transition hover:border-[var(--mood-accent)] hover:text-[var(--mood-accent)]">← Kembali</a>
+            <a href="#/" className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 transition hover:border-[var(--mood-accent)] hover:text-[var(--mood-accent)]">{ui.moodBack}</a>
             <a href="#/articles" className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 transition hover:border-[var(--mood-accent)] hover:text-[var(--mood-accent)]">Artikel</a>
           </div>
 
@@ -62,7 +86,7 @@ export default function Mood() {
               type="button"
               className="mood-menu-button"
               onClick={() => setMenuOpen((value) => !value)}
-              aria-label="Buka menu mood"
+              aria-label="Mood menu"
             >
               {menuOpen ? '×' : '☰'}
             </button>
@@ -70,7 +94,7 @@ export default function Mood() {
               <img src="/logo.png" alt="IMAN IN MOTION" className="h-11 w-11 rounded-2xl bg-white object-contain p-1" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-black tracking-[0.18em] text-white">IMAN IN MOTION</p>
-                <p className="truncate text-xs font-semibold text-white/55">Mood → Dalil → Film</p>
+                <p className="truncate text-xs font-semibold text-white/55">{ui.moodToFilm}</p>
               </div>
             </a>
           </div>
@@ -95,8 +119,8 @@ export default function Mood() {
       </aside>
 
       <main className="mood-main">
-        <section className="mood-dalil-box">
-          <span className="mood-badge">Dalil Untukmu</span>
+        <section className="mood-dalil-box" data-aos="fade-left">
+          <span className="mood-badge">{ui.dalilForYou}</span>
           <h1>{mood.title}</h1>
           <p className="max-w-3xl text-base font-semibold leading-8 text-white/62">{mood.description}</p>
           <div className="mood-arabic">{mood.arabic}</div>
@@ -105,37 +129,49 @@ export default function Mood() {
           </p>
         </section>
 
-        <section className="mood-toolbar">
-          <input value={query} onChange={(e) => setQuery(e.target.value)} type="search" placeholder="Cari film, genre, atau sinopsis..." />
+        <section className="mood-toolbar" data-aos="fade-left" data-aos-delay="80">
+          <input value={query} onChange={(e) => setQuery(e.target.value)} type="search" placeholder={ui.searchFilm} />
           <select className="select-premium" value={sort} onChange={(e) => setSort(e.target.value)}>
-            <option value="recommended">Rekomendasi terbaik</option>
-            <option value="rating">Rating tertinggi</option>
-            <option value="year">Terbaru</option>
-            <option value="title">Judul A-Z</option>
+            <option value="recommended">{ui.bestRecommendation}</option>
+            <option value="rating">{ui.topRating}</option>
+            <option value="year">{ui.newest}</option>
+            <option value="title">{ui.titleAZ}</option>
+            <option value="popular">Popularitas</option>
           </select>
           <select className="select-premium" value={genre} onChange={(e) => setGenre(e.target.value)}>
-            <option value="">Semua genre</option>
+            <option value="">{ui.allGenre}</option>
             {genres.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
-          <a href={`#/aiman?mood=${currentMood}`} className="mood-aiman-link">Tanya AIMAN</a>
+          <a href={`#/aiman?mood=${currentMood}`} className="mood-aiman-link">{ui.askAiman}</a>
         </section>
 
-        <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+        <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end" data-aos="fade-left" data-aos-delay="120">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-[var(--mood-accent)]">Rekomendasi Film</p>
-            <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-white md:text-4xl">Untuk mood {mood.label}</h2>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-[var(--mood-accent)]">{ui.filmRecommendations}</p>
+            <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-white md:text-4xl">{ui.forMood.replace('{mood}', mood.label)}</h2>
           </div>
-          <p className="text-sm font-bold text-white/55">Menampilkan {movies.length} film</p>
+          <p className="text-sm font-bold text-white/55">{ui.showingFilms.replace('{count}', visibleMovies.length)} dari {movies.length}</p>
         </div>
 
-        {movies.length ? (
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
-            {movies.map((movie) => <FilmCard key={movie.id} movie={movie} mood={currentMood} />)}
-          </div>
+        {gridLoading ? (
+          <MoodFilmGridSkeleton count={12} />
+        ) : movies.length ? (
+          <>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+              {visibleMovies.map((movie, index) => <FilmCard key={movie.id} movie={movie} mood={currentMood} animationDelay={(index % 10) * 35} />)}
+            </div>
+            {totalPages > 1 && (
+              <div className="iim-pagination mood-pagination">
+                <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page === 1}>Sebelumnya</button>
+                <span>Halaman {page} / {totalPages}</span>
+                <button type="button" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page === totalPages}>Berikutnya</button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="mood-empty">
-            <h3>Film tidak ditemukan.</h3>
-            <p>Coba ubah keyword atau pilih genre lain.</p>
+            <h3>{ui.filmNotFound}</h3>
+            <p>{ui.tryOtherFilm}</p>
           </div>
         )}
       </main>

@@ -1,40 +1,29 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import AOS from 'aos';
+import 'aos/dist/aos.css';
 import './styles/index.css';
-import { BookOpen, Film as FilmIcon, Home as HomeIcon, Info as InfoIcon, MessageCircle, Moon, Settings, SmilePlus, Sun, UserRound, X } from 'lucide-react';
-import Home from './pages/Home';
-import Mood from './pages/Mood';
-import Film from './pages/Film';
-import FilmDetail from './pages/FilmDetail';
-import Articles from './pages/Articles';
-import ArticleDetail from './pages/ArticleDetail';
-import Aiman from './pages/Aiman';
-import Info from './pages/Info';
+import { BookOpen, Copyright, Film as FilmIcon, Home as HomeIcon, Info as InfoIcon, Menu, MessageCircle, Moon, Settings, ShieldCheck, SmilePlus, Sun, UserRound, X } from 'lucide-react';
+import { PageSkeleton } from './components/Skeletons';
 
+const Home = React.lazy(() => import('./pages/Home'));
+const Mood = React.lazy(() => import('./pages/Mood'));
+const Film = React.lazy(() => import('./pages/Film'));
+const FilmDetail = React.lazy(() => import('./pages/FilmDetail'));
+const Articles = React.lazy(() => import('./pages/Articles'));
+const ArticleDetail = React.lazy(() => import('./pages/ArticleDetail'));
+const Aiman = React.lazy(() => import('./pages/Aiman'));
+const Info = React.lazy(() => import('./pages/Info'));
+const Account = React.lazy(() => import('./pages/Account'));
 
-const firebaseConfig = {
-  apiKey: 'AIzaSyDi3zOmx6tf9MSCMp7HDlCk4-5QY4nZK7E',
-  authDomain: 'uwiberani-project.firebaseapp.com',
-  projectId: 'uwiberani-project',
-  storageBucket: 'uwiberani-project.appspot.com',
-  messagingSenderId: '735078024592',
-  appId: '1:735078024592:web:8e15bb85b0448402425f15'
-};
+import { initialsFromUser, migrateLocalAccountDataToFirestore } from './utils/accountStorage';
+import { loadFirebaseAuthClient } from './utils/firebaseClient';
+import { getCopy, languageOptions } from './utils/i18n';
+import { initMotionExperience } from './utils/motionExperience';
 
-let firebaseAuthCache = null;
-let firebaseFnsCache = null;
 
 async function loadFirebaseAuth() {
-  if (firebaseAuthCache && firebaseFnsCache) return { auth: firebaseAuthCache, ...firebaseFnsCache };
-  const appModule = await import(/* @vite-ignore */ 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-  const authModule = await import(/* @vite-ignore */ 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  const app = appModule.initializeApp(firebaseConfig);
-  const auth = authModule.getAuth(app);
-  const provider = new authModule.GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
-  firebaseAuthCache = auth;
-  firebaseFnsCache = { ...authModule, provider };
-  return { auth, ...firebaseFnsCache };
+  return loadFirebaseAuthClient();
 }
 
 function storeFirebaseUser(user) {
@@ -54,6 +43,7 @@ function storeFirebaseUser(user) {
   localStorage.setItem('iman_user', JSON.stringify(payload));
   window.IMAN_AUTH = { currentUser: user };
   window.dispatchEvent(new Event('iman-auth-change'));
+  migrateLocalAccountDataToFirestore(payload).catch(() => {});
   return payload;
 }
 
@@ -64,8 +54,15 @@ const routes = {
   '/articles': Articles,
   '/artikel': Articles,
   '/aiman': Aiman,
-  '/info': Info
+  '/info': Info,
+  '/account': Account,
+  '/akun': Account
 };
+
+// Mobile swipe order follows the bottom navigation order.
+// It lets users move between the main menus with a horizontal swipe,
+// like adjacent panels, without changing the desktop experience.
+const mobileSwipeRoutes = ['/', '/mood', '/film', '/articles', '/aiman'];
 
 function getPath() {
   const hash = window.location.hash.replace('#', '') || '/';
@@ -101,6 +98,18 @@ function AuthModal({ mode, setMode, close }) {
   const [savedUser, setSavedUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('iman_user') || 'null'); } catch { return null; }
   });
+  const [language, setLanguage] = useState(() => localStorage.getItem('iim-language') || 'id');
+  const tSettings = getCopy(language).settings;
+
+  function changeLanguage(code) {
+    setLanguage(code);
+    localStorage.setItem('iim-language', code);
+    document.documentElement.lang = code;
+    document.documentElement.dir = code === 'ar' ? 'rtl' : 'ltr';
+    window.dispatchEvent(new CustomEvent('iim-language-change'));
+    const settingsCopy = getCopy(code).settings;
+    window.dispatchEvent(new CustomEvent('iim-toast', { detail: `${settingsCopy.changed} ${languageOptions.find((item) => item.code === code)?.label || code}.` }));
+  }
 
   useEffect(() => {
     if (mode === 'auth') {
@@ -205,12 +214,12 @@ function AuthModal({ mode, setMode, close }) {
   }
 
   const settingMenus = [
-    { title: 'Pengaturan', icon: '⚙', action: () => { localStorage.removeItem('iman_last_mood'); localStorage.removeItem('iman_chat_history'); }, actionLabel: 'Hapus riwayat' },
-    { title: 'Akun', icon: '👤', action: () => setMode('auth'), actionLabel: savedUser ? 'Kelola' : 'Masuk' },
-    { title: 'Tentang IMAN IN MOTION', icon: 'ℹ', action: () => goInfo('about'), actionLabel: 'Buka' },
-    { title: 'Team UIKA-Berani Project', icon: '👥', action: () => goInfo('team'), actionLabel: 'Lihat' },
-    { title: 'Hak Cipta', icon: '©', action: () => goInfo('copyright'), actionLabel: 'Soon' },
-    { title: 'Bantuan', icon: '💬', action: () => goInfo('help'), actionLabel: 'Kontak' }
+    { title: tSettings.title || 'Pengaturan', icon: '⚙', action: () => { localStorage.removeItem('iman_last_mood'); localStorage.removeItem('iman_chat_history'); }, actionLabel: tSettings.clearHistory || 'Hapus riwayat' },
+    { title: tSettings.account || 'Akun', icon: '👤', action: () => { if (savedUser) { window.location.hash = '#/account'; close(); } else setMode('auth'); }, actionLabel: savedUser ? (tSettings.open || 'Buka') : (tSettings.signIn || 'Masuk') },
+    { title: tSettings.aboutApp || 'Tentang IMAN IN MOTION', icon: 'ℹ', action: () => goInfo('about'), actionLabel: tSettings.open || 'Buka' },
+    { title: tSettings.aboutFounder || 'About Founder', icon: '👤', action: () => goInfo('team'), actionLabel: tSettings.view || 'Lihat' },
+    { title: tSettings.copyright || 'Hak Cipta', icon: '©', action: () => goInfo('copyright'), actionLabel: tSettings.soon || 'Soon' },
+    { title: tSettings.help || 'Bantuan', icon: '💬', action: () => goInfo('help'), actionLabel: tSettings.contact || 'Kontak' }
   ];
 
   return (
@@ -218,14 +227,36 @@ function AuthModal({ mode, setMode, close }) {
       <div className="max-h-[86vh] w-full max-w-md overflow-y-auto rounded-[1.75rem] border border-white/10 bg-iim-cream p-4 shadow-premium dark:bg-[#19140f] sm:p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="section-eyebrow">{mode === 'settings' ? 'Menu' : 'Akun IMAN'}</p>
-            <h2 className="mt-1 text-xl font-black text-iim-coffee dark:text-iim-cream sm:text-2xl">{mode === 'settings' ? 'IMAN IN MOTION' : 'Masuk atau daftar'}</h2>
+            <p className="section-eyebrow">{mode === 'settings' ? tSettings.eyebrow : 'Akun IMAN'}</p>
+            <h2 className="mt-1 text-xl font-black text-iim-coffee dark:text-iim-cream sm:text-2xl">{mode === 'settings' ? tSettings.title : 'Masuk atau daftar'}</h2>
           </div>
           <button className="grid h-11 w-11 place-items-center rounded-2xl border border-iim-brown/15 dark:border-white/10" onClick={close} aria-label="Tutup"><X size={18} /></button>
         </div>
 
         {mode === 'settings' ? (
-          <div className="mt-5 space-y-2">
+          <div className="mt-5 space-y-3">
+            <div className="rounded-2xl border border-iim-brown/10 bg-white/60 p-3 dark:border-white/10 dark:bg-white/10">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-iim-brown dark:text-iim-gold">{tSettings.language}</p>
+                  <p className="mt-1 text-sm font-black text-iim-coffee dark:text-iim-cream">{tSettings.changeDisplayLanguage || tSettings.chooseLanguage}</p>
+                </div>
+                <span className="rounded-full bg-iim-gold px-3 py-1.5 text-[11px] font-black text-iim-charcoal">{languageOptions.find((item) => item.code === language)?.label}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {languageOptions.map((item) => (
+                  <button
+                    key={item.code}
+                    type="button"
+                    onClick={() => changeLanguage(item.code)}
+                    className={`rounded-xl border px-3 py-2 text-left text-xs font-extrabold transition ${language === item.code ? 'border-iim-gold bg-iim-gold text-iim-charcoal shadow-glow' : 'border-iim-brown/10 bg-white/55 text-iim-coffee hover:border-iim-gold dark:border-white/10 dark:bg-white/10 dark:text-iim-cream'}`}
+                  >
+                    <span className="block">{item.label}</span>
+                    <span className="block text-[10px] opacity-70">{item.native}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
             {settingMenus.map((item) => (
               <button key={item.title} type="button" onClick={item.action} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-iim-brown/10 bg-white/60 px-3.5 py-3 text-left transition hover:border-iim-gold hover:bg-white dark:border-white/10 dark:bg-white/10 dark:hover:bg-white/15">
                 <span className="flex min-w-0 items-center gap-3">
@@ -236,7 +267,7 @@ function AuthModal({ mode, setMode, close }) {
               </button>
             ))}
             {savedUser && (
-              <button type="button" disabled={loading} onClick={logout} className="mt-3 w-full rounded-2xl bg-iim-coffee px-4 py-3 text-sm font-extrabold text-iim-cream dark:bg-iim-gold dark:text-iim-charcoal">Keluar akun</button>
+              <button type="button" disabled={loading} onClick={logout} className="mt-3 w-full rounded-2xl bg-iim-coffee px-4 py-3 text-sm font-extrabold text-iim-cream dark:bg-iim-gold dark:text-iim-charcoal">{tSettings.logout || 'Keluar akun'}</button>
             )}
           </div>
         ) : (
@@ -270,29 +301,36 @@ function AuthModal({ mode, setMode, close }) {
 
 function Navbar({ path, theme, setTheme }) {
   const [modal, setModal] = useState(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [language, setLanguage] = useState(() => localStorage.getItem('iim-language') || 'id');
+  const t = getCopy(language);
+  const [toast, setToast] = useState('');
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('iman_user') || 'null'); } catch { return null; }
   });
   const desktopLinks = [
-    ['/', 'Home', HomeIcon],
-    ['/mood', 'Mood', SmilePlus],
-    ['/film', 'Film', FilmIcon],
-    ['/articles', 'Artikel', BookOpen],
-    ['/aiman', 'AIMAN', MessageCircle],
-    ['/info', 'Info', InfoIcon]
+    ['/', t.nav.home, HomeIcon],
+    ['/mood', t.nav.mood, SmilePlus],
+    ['/film', t.nav.film, FilmIcon],
+    ['/articles', t.nav.articles, BookOpen],
+    ['/aiman', t.nav.aiman, MessageCircle],
+    ['/info', t.nav.info, InfoIcon],
+    ...(user ? [['/account', t.nav.account, UserRound]] : [])
   ];
   const mobileLinks = [
-    ['/', 'Home', HomeIcon],
-    ['/mood', 'Mood', SmilePlus],
-    ['/film', 'Film', FilmIcon],
-    ['/articles', 'Artikel', BookOpen],
-    ['/aiman', 'AIMAN', MessageCircle]
+    ['/', t.nav.home, HomeIcon],
+    ['/mood', t.nav.mood, SmilePlus],
+    ['/film', t.nav.film, FilmIcon],
+    ['/articles', t.nav.articles, BookOpen],
+    ['/aiman', t.nav.aiman, MessageCircle],
+    ['/info', t.nav.info, InfoIcon],
+    ...(user ? [['/account', t.nav.account, UserRound]] : [])
   ];
-  const isActive = (to) => path === to || (to === '/articles' && path.startsWith('/article/')) || (to === '/film' && path.startsWith('/film/'));
+  const isActive = (to) => path === to || (to === '/account' && path === '/akun') || (to === '/articles' && path.startsWith('/article/')) || (to === '/film' && path.startsWith('/film/'));
 
   async function handleGoogleNav() {
     if (user) {
-      setModal('settings');
+      window.location.hash = '#/account';
       return;
     }
     try {
@@ -307,6 +345,16 @@ function Navbar({ path, theme, setTheme }) {
   }
 
   useEffect(() => {
+    const showToast = (event) => {
+      setToast(event.detail || 'Aksi berhasil.');
+      window.clearTimeout(window.__iimToastTimer);
+      window.__iimToastTimer = window.setTimeout(() => setToast(''), 2600);
+    };
+    window.addEventListener('iim-toast', showToast);
+    return () => window.removeEventListener('iim-toast', showToast);
+  }, []);
+
+  useEffect(() => {
     const refresh = () => { try { setUser(JSON.parse(localStorage.getItem('iman_user') || 'null')); } catch { setUser(null); } };
     window.addEventListener('storage', refresh);
     window.addEventListener('iman-auth-change', refresh);
@@ -317,6 +365,13 @@ function Navbar({ path, theme, setTheme }) {
     return () => { window.removeEventListener('storage', refresh); window.removeEventListener('iman-auth-change', refresh); unsub(); };
   }, []);
 
+  useEffect(() => {
+    const syncLanguage = () => setLanguage(localStorage.getItem('iim-language') || 'id');
+    window.addEventListener('storage', syncLanguage);
+    window.addEventListener('iim-language-change', syncLanguage);
+    return () => { window.removeEventListener('storage', syncLanguage); window.removeEventListener('iim-language-change', syncLanguage); };
+  }, []);
+
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-iim-brown/10 bg-iim-cream/86 backdrop-blur-2xl dark:border-white/10 dark:bg-iim-charcoal/86">
@@ -325,7 +380,7 @@ function Navbar({ path, theme, setTheme }) {
             <img src="/logo.png" alt="IMAN IN MOTION" className="h-12 w-12 rounded-2xl object-contain shadow-glow" />
             <div>
               <p className="text-sm font-extrabold tracking-[0.22em] text-iim-coffee dark:text-iim-cream">IMAN IN MOTION</p>
-              <p className="text-xs font-semibold text-iim-brown dark:text-iim-sand">Rekomendasi film dakwah berbasis mood</p>
+              <p className="text-xs font-semibold text-iim-brown dark:text-iim-sand">{t.home.eyebrow}</p>
             </div>
           </Link>
 
@@ -343,18 +398,21 @@ function Navbar({ path, theme, setTheme }) {
 
           <div className="desktop-actions flex items-center gap-2">
             <ThemeToggle theme={theme} setTheme={setTheme} />
-            <button type="button" id="settingsBtn" onClick={() => setModal('settings')} className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-iim-brown/15 bg-white/65 text-iim-coffee transition hover:-translate-y-0.5 hover:border-iim-gold dark:border-white/10 dark:bg-white/10 dark:text-iim-cream" aria-label="Settings"><Settings size={18} /></button>
+            <button type="button" id="settingsBtn" onClick={() => setModal('settings')} className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-iim-brown/15 bg-white/65 text-iim-coffee transition hover:-translate-y-0.5 hover:border-iim-gold dark:border-white/10 dark:bg-white/10 dark:text-iim-cream" aria-label={t.nav.settings}><Settings size={18} /></button>
             <button type="button" id="loginGoogle" onClick={handleGoogleNav} className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-2xl bg-iim-gold px-4 text-sm font-extrabold leading-none text-iim-charcoal transition hover:-translate-y-0.5">
-              <UserRound size={16} />
+              {user?.photoURL ? <img src={user.photoURL} alt={user.name || 'Akun'} className="h-6 w-6 rounded-full object-cover" /> : <span className="grid h-6 w-6 place-items-center rounded-full bg-iim-charcoal/10 text-[10px] font-black">{user ? initialsFromUser(user) : <UserRound size={16} />}</span>}
               <span>{user?.name?.split(' ')[0] || 'Google'}</span>
             </button>
-            <button type="button" id="loginEmail" onClick={() => setModal('auth')} className="inline-flex h-11 items-center justify-center rounded-2xl border border-iim-brown/15 bg-white/65 px-4 text-sm font-extrabold leading-none text-iim-coffee transition hover:-translate-y-0.5 hover:border-iim-gold dark:border-white/10 dark:bg-white/10 dark:text-iim-cream">
-              {user ? 'Akun' : 'Masuk'}
+            <button type="button" id="loginEmail" onClick={() => user ? (window.location.hash = '#/account') : setModal('auth')} className="inline-flex h-11 items-center justify-center rounded-2xl border border-iim-brown/15 bg-white/65 px-4 text-sm font-extrabold leading-none text-iim-coffee transition hover:-translate-y-0.5 hover:border-iim-gold dark:border-white/10 dark:bg-white/10 dark:text-iim-cream">
+              {user ? t.nav.account : t.nav.login}
             </button>
           </div>
         </div>
 
         <div className="mobile-app-topbar md:hidden">
+          <button type="button" onClick={() => setMobileOpen((value) => !value)} className="mobile-hamburger-btn" aria-label="Buka menu">
+            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
           <Link to="/" className="mobile-brand-lockup" aria-label="IMAN IN MOTION Home">
             <img src="/logo.png" alt="IMAN IN MOTION" />
             <div>
@@ -365,14 +423,35 @@ function Navbar({ path, theme, setTheme }) {
             <button type="button" onClick={handleGoogleNav} className="mobile-google-btn" aria-label="Login Google">
               G
             </button>
-            <button type="button" onClick={() => setModal('auth')} className="mobile-login-btn">
-              {user ? 'Akun' : 'Masuk'}
+            <button type="button" onClick={() => user ? (window.location.hash = '#/account') : setModal('auth')} className="mobile-login-btn">
+              {user ? t.nav.account : t.nav.login}
             </button>
-            <button type="button" onClick={() => setModal('settings')} className="mobile-setting-btn" aria-label="Pengaturan">
+            <button type="button" onClick={() => setModal('settings')} className="mobile-setting-btn" aria-label={t.nav.settings}>
               <Settings size={16} />
             </button>
           </div>
         </div>
+        {mobileOpen && (
+          <div className="mobile-nav-panel md:hidden">
+            <nav className="mobile-nav-card grid gap-2">
+              {mobileLinks.map(([to, label, Icon]) => (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex min-h-11 items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black transition ${isActive(to) ? 'bg-iim-gold text-iim-charcoal' : 'text-iim-coffee hover:bg-white dark:text-iim-cream dark:hover:bg-white/10'}`}
+                >
+                  <Icon size={18} />
+                  <span>{label}</span>
+                </Link>
+              ))}
+              <button type="button" onClick={() => { setMobileOpen(false); setModal('settings'); }} className="flex min-h-11 items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-black text-iim-coffee hover:bg-white dark:text-iim-cream dark:hover:bg-white/10">
+                <Settings size={18} />
+                <span>{t.nav.settings}</span>
+              </button>
+            </nav>
+          </div>
+        )}
       </header>
 
       <nav className="mobile-bottom-nav md:hidden" aria-label="Navigasi utama mobile">
@@ -389,6 +468,7 @@ function Navbar({ path, theme, setTheme }) {
           </Link>
         ))}
       </nav>
+      {toast && <div className="iim-toast">{toast}</div>}
       <AuthModal mode={modal} setMode={setModal} close={() => setModal(null)} />
     </>
   );
@@ -403,50 +483,40 @@ function SplashScreen({ onDone }) {
     finishRef.current = true;
     setLeaving(true);
     window.setTimeout(() => {
-      sessionStorage.setItem('iim_splash_seen', 'yes');
       onDone?.();
-    }, 520);
+    }, 180);
   }
 
   useEffect(() => {
     const keyHandler = (event) => {
       if (event.key === 'Enter' || event.key === ' ' || event.key === 'Escape') finish();
     };
+    // Splash appears on every refresh and stays until user clicks/taps or presses Enter/Space/Escape.
     window.addEventListener('keydown', keyHandler);
-    return () => window.removeEventListener('keydown', keyHandler);
+    return () => {
+      window.removeEventListener('keydown', keyHandler);
+    };
   }, []);
 
   return (
     <button
       type="button"
-      className={`splash-screen ${leaving ? 'leaving' : ''}`}
+      className={`splash-screen splash-screen-lite ${leaving ? 'leaving' : ''}`}
       onClick={finish}
-      aria-label="Klik di mana saja untuk melanjutkan ke IMAN IN MOTION"
+      aria-label="Masuk ke IMAN IN MOTION"
     >
-      <span className="splash-orb splash-orb-one" />
-      <span className="splash-orb splash-orb-two" />
-      <span className="splash-orb splash-orb-three" />
-      <span className="splash-film-line line-a" />
-      <span className="splash-film-line line-b" />
-      <span className="splash-film-line line-c" />
-      <span className="splash-mood-dot dot-a" />
-      <span className="splash-mood-dot dot-b" />
-      <span className="splash-mood-dot dot-c" />
-      <span className="splash-spark spark-a">✦</span>
-      <span className="splash-spark spark-b">✧</span>
-      <span className="splash-spark spark-c">•</span>
-
-      <span className="splash-center">
-        <span className="splash-logo-wrap">
-          <img src="/logo.png" alt="IMAN IN MOTION" className="splash-logo" />
-          <span className="splash-logo-shadow" />
+      <span className="splash-orb splash-orb-one" aria-hidden="true" />
+      <span className="splash-orb splash-orb-two" aria-hidden="true" />
+      <span className="splash-spark spark-a" aria-hidden="true">✦</span>
+      <span className="splash-spark spark-b" aria-hidden="true">✧</span>
+      <span className="splash-center splash-center-lite">
+        <span className="splash-logo-wrap splash-logo-wrap-lite">
+          <img src="/logo.png" alt="IMAN IN MOTION" className="splash-logo" decoding="async" fetchpriority="high" />
         </span>
-        <span className="splash-copy">
-          <span className="splash-eyebrow">Mood • Film • Refleksi</span>
-          <span className="splash-title">IMAN IN MOTION</span>
-          <span className="splash-subtitle">Temukan tontonan yang menyentuh hati dan menguatkan iman.</span>
+        <span className="splash-copy splash-copy-lite">
+          <span className="splash-title splash-title-lite">IMAN IN MOTION</span>
+          <span className="splash-tap-hint">Tap dimana saja</span>
         </span>
-        <span className="splash-continue">Klik di mana saja untuk melanjutkan</span>
       </span>
     </button>
   );
@@ -455,7 +525,11 @@ function SplashScreen({ onDone }) {
 function App() {
   const [path, setPath] = useState(getPath());
   const [theme, setThemeState] = useState(() => localStorage.getItem('iim-theme') || 'dark');
-  const [showSplash, setShowSplash] = useState(() => sessionStorage.getItem('iim_splash_seen') !== 'yes');
+  const [language, setLanguage] = useState(() => localStorage.getItem('iim-language') || 'id');
+  const swipeRef = React.useRef({ x: 0, y: 0, t: 0 });
+  // Always show splash on every full page refresh/reload.
+  // It only closes for the current React session after the user clicks/presses a key.
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     const handler = () => setPath(getPath());
@@ -473,6 +547,18 @@ function App() {
     localStorage.setItem('iim-theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    const applyLanguage = () => setLanguage(localStorage.getItem('iim-language') || 'id');
+    window.addEventListener('storage', applyLanguage);
+    window.addEventListener('iim-language-change', applyLanguage);
+    return () => { window.removeEventListener('storage', applyLanguage); window.removeEventListener('iim-language-change', applyLanguage); };
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+  }, [language]);
+
   const Page = useMemo(() => {
     if (path.startsWith('/film/')) return FilmDetail;
     if (path.startsWith('/article/')) return ArticleDetail;
@@ -481,18 +567,123 @@ function App() {
 
   const isAimanRoute = path === '/aiman';
 
+  useEffect(() => {
+    AOS.init({
+      duration: 720,
+      easing: 'ease-out-cubic',
+      once: false,
+      mirror: false,
+      offset: 72
+    });
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => AOS.refreshHard(), 120);
+    return () => window.clearTimeout(timer);
+  }, [path, theme, language]);
+
+  useEffect(() => {
+    let cleanup = () => {};
+    const timer = window.setTimeout(() => {
+      const result = initMotionExperience();
+      if (result && typeof result.then === 'function') {
+        result.then((fn) => { cleanup = typeof fn === 'function' ? fn : cleanup; });
+      } else {
+        cleanup = typeof result === 'function' ? result : cleanup;
+      }
+    }, 80);
+    return () => {
+      window.clearTimeout(timer);
+      cleanup();
+    };
+  }, [path, theme, language]);
+
+  useEffect(() => {
+    document.body.classList.toggle('route-aiman', isAimanRoute);
+    document.body.classList.toggle('route-not-aiman', !isAimanRoute);
+    return () => {
+      document.body.classList.remove('route-aiman', 'route-not-aiman');
+    };
+  }, [isAimanRoute]);
+
+  function canonicalSwipePath(value) {
+    if (value === '/artikel' || value.startsWith('/article/')) return '/articles';
+    if (value.startsWith('/film/')) return '/film';
+    if (value === '/akun') return '/account';
+    return value;
+  }
+
+  function goMobileSwipe(direction) {
+    if (typeof window === 'undefined') return;
+    if (window.innerWidth >= 768) return;
+    const current = canonicalSwipePath(path);
+    const index = mobileSwipeRoutes.indexOf(current);
+    if (index < 0) return;
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= mobileSwipeRoutes.length) return;
+    window.location.hash = `#${mobileSwipeRoutes[nextIndex]}`;
+  }
+
+  function handleTouchStart(event) {
+    if (isAimanRoute) return;
+    const touch = event.touches?.[0];
+    if (!touch) return;
+    swipeRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now() };
+  }
+
+  function handleTouchEnd(event) {
+    if (isAimanRoute) return;
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
+    const start = swipeRef.current;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    const dt = Date.now() - start.t;
+
+    // Only trigger when the gesture is clearly horizontal, so normal vertical
+    // page scrolling and card tapping stay safe.
+    if (Math.abs(dx) < 74) return;
+    if (Math.abs(dx) < Math.abs(dy) * 1.45) return;
+    if (dt > 850) return;
+
+    goMobileSwipe(dx < 0 ? 1 : -1);
+  }
+
   return (
     <>
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       <div className={`min-h-screen text-iim-coffee dark:text-iim-cream ${isAimanRoute ? 'is-aiman-route' : ''}`}>
       <Navbar path={path} theme={theme} setTheme={setThemeState} />
-      <main className="fade-in">
-        <Page path={path} />
+      <main
+        className="fade-in mobile-swipe-stage"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <Suspense fallback={<PageSkeleton />}>
+          <Page path={path} />
+        </Suspense>
       </main>
       {!isAimanRoute && <footer className="mt-16 border-t border-iim-brown/10 py-8 dark:border-white/10">
-        <div className="container-page flex flex-col gap-3 text-sm text-iim-brown dark:text-iim-sand md:flex-row md:items-center md:justify-between">
-          <p className="font-semibold">© {new Date().getFullYear()} IMAN IN MOTION. Model literasi dakwah berbasis mood.</p>
-          <p>Because we move with iman, story, and reflection.</p>
+        <div className="container-page flex flex-col gap-4 text-sm text-iim-brown dark:text-iim-sand">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p className="font-semibold">© {new Date().getFullYear()} IMAN IN MOTION. {getCopy(language).footer.left}</p>
+            <p>{getCopy(language).footer.right}</p>
+          </div>
+          <div className="flex flex-col gap-3 rounded-2xl border border-iim-brown/10 bg-white/48 px-4 py-3 text-xs font-bold leading-6 shadow-sm dark:border-white/10 dark:bg-white/[0.055] sm:flex-row sm:items-center sm:justify-between">
+            <p className="flex min-w-0 items-start gap-2">
+              <ShieldCheck size={16} className="mt-0.5 shrink-0 text-iim-brown dark:text-iim-gold" />
+              <span>Terdaftar Hak Cipta sebagai Program Komputer pada Kementerian Hukum Republik Indonesia. No. Pencatatan: <strong className="text-iim-coffee dark:text-iim-cream">001241778</strong>.</span>
+            </p>
+            <a
+              href="/sertifikat-hak-cipta-iman-in-motion.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-iim-gold/30 bg-iim-gold/15 px-3 py-2 font-black text-iim-coffee transition hover:-translate-y-0.5 hover:bg-iim-gold/25 dark:text-iim-cream"
+            >
+              <Copyright size={14} />
+              Lihat Sertifikat
+            </a>
+          </div>
         </div>
       </footer>}
       </div>

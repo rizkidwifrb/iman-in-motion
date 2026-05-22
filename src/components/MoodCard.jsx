@@ -6,15 +6,15 @@ export default function MoodCard({ mood, compact = false, mini = false }) {
       <a
         href={href}
         className="group flex min-h-[58px] items-center justify-between gap-2 overflow-hidden rounded-2xl bg-white/[0.075] px-3 py-2 text-left transition hover:-translate-y-0.5 hover:bg-white/15"
+        data-aos="fade-left"
       >
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-iim-gold/18 text-lg">{mood.icon}</span>
           <div className="min-w-0">
             <p className="text-sm font-extrabold leading-tight text-iim-cream">{mood.label}</p>
-            <p className="line-clamp-1 text-[10.5px] leading-5 text-iim-sand/85">{mood.message}</p>
+            <p className="mini-mood-desc mt-1 hidden text-[9px] font-semibold leading-4 text-iim-sand/80">{mood.description}</p>
           </div>
         </div>
-        <span className="shrink-0 rounded-full bg-iim-gold px-2.5 py-1 text-[10px] font-black text-iim-charcoal">pilih</span>
       </a>
     );
   }
@@ -23,6 +23,7 @@ export default function MoodCard({ mood, compact = false, mini = false }) {
     <a
       href={href}
       className={`premium-card group relative overflow-hidden hover:-translate-y-1 hover:shadow-glow ${compact ? 'min-h-[142px] p-4' : 'min-h-[220px] p-5'}`}
+      data-aos="fade-left"
     >
       <div className={`absolute inset-0 bg-gradient-to-br ${mood.accent} opacity-80`} />
       <div className="relative z-10">

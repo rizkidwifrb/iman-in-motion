@@ -96,7 +96,9 @@ export function movieCardTemplate(movie, selectedMood) {
   const poster = movie.poster_url || movie.poster || FALLBACK_POSTER;
   const year = movie.year || '-';
   const genres = movie.genres || movie.genre || 'Drama';
-  const rating = Number(movie.rating || 0) || 0;
+  const rating = Number(movie.rating || movie.vote_average || movie.tmdb_vote_average || 0) || 0;
+  const ratingSource = String(movie.rating_source || '').toLowerCase() === 'tmdb' || Number(movie.tmdb_vote_average || 0) > 0 ? ' TMDB' : '';
+  const ratingLabel = rating > 0 ? `★ ${rating.toFixed(1)}/10${ratingSource}` : 'Belum ada rating';
   const reason = movie.reason || `Cocok untuk fase ${selectedMood} dengan tema yang reflektif.`;
 
   return `
@@ -107,7 +109,7 @@ export function movieCardTemplate(movie, selectedMood) {
         <div class="movie-meta">
           <span>${escapeHtml(year)}</span>
           <span>${escapeHtml(String(genres).split('|')[0].trim())}</span>
-          <span>Rating ${rating.toFixed(1)}</span>
+          <span>${escapeHtml(ratingLabel)}</span>
         </div>
         <div class="movie-meta" style="margin-top:6px">
           <span class="chip">Mood: ${escapeHtml(selectedMood)}</span>

@@ -7,9 +7,20 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "start": "node app.js"
+    "start": "node app.js",
+    "trailers": "python scripts/add_trailer_urls.py --csv df_processed.csv --src src/data/movies.js --public public/js/movies.js",
+    "ratings": "python scripts/enrich_tmdb.py --csv df_processed.csv --src src/data/movies.js --public public/js/movies.js",
+    "enrich:tmdb": "python scripts/enrich_tmdb.py --csv df_processed.csv --src src/data/movies.js --public public/js/movies.js && python scripts/add_trailer_urls.py --csv df_processed.csv --src src/data/movies.js --public public/js/movies.js",
+    "sync:movies": "node scripts/sync_movies_data.mjs",
+    "audit:data": "node scripts/audit_media_data.mjs",
+    "build:cpp": "node scripts/build_cpp_ranker.mjs"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.2.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "aos": "^2.3.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "csv-parser": "^3.0.0",
     "dotenv": "^16.4.5",
@@ -18,13 +29,13 @@
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "typescript": "^5.7.2"
+    "tailwind-merge": "^3.6.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.14",
-    "tailwindcss": "^3.4.19",
-    "vite": "^8.0.11"
+    "tailwindcss": "^3.4.17"
   }
 }

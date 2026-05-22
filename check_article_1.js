@@ -1,1 +1,0 @@
-if(!window.IMAN_ARTICLES){document.write('<script src="articles-data.js"><\/script>')}

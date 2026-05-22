@@ -1,5 +1,5 @@
 import articles from '../data/articles';
-import { makeArticleCopy, prettyMood } from '../components/ArticleCard';
+import ArticleCard, { makeArticleCopy } from '../components/ArticleCard';
 
 const moodCopy = {
   sedih: {
@@ -44,6 +44,169 @@ function splitGenres(genres = '') {
   return String(genres).split(/[,|]/).map((item) => item.trim()).filter(Boolean);
 }
 
+const articleVoices = [
+  {
+    intro: 'personal dan hangat',
+    reader: 'penonton yang ingin memahami rasa tanpa merasa digurui',
+    close: 'sebagai catatan kecil untuk dibawa setelah layar selesai menyala'
+  },
+  {
+    intro: 'analitis tetapi tetap ringan',
+    reader: 'pembaca yang suka melihat hubungan antara alur, emosi, dan nilai',
+    close: 'sebagai bahan diskusi setelah menonton bersama teman'
+  },
+  {
+    intro: 'kontemplatif',
+    reader: 'siapa pun yang sedang mencari jeda di tengah hari yang ramai',
+    close: 'sebagai ruang untuk merapikan pikiran sebelum kembali bergerak'
+  },
+  {
+    intro: 'naratif dan dekat dengan pengalaman sehari-hari',
+    reader: 'penonton muda yang memilih film berdasarkan suasana hati',
+    close: 'sebagai pengingat bahwa hiburan juga bisa menyimpan arah'
+  },
+  {
+    intro: 'singkat, tajam, dan reflektif',
+    reader: 'pengguna yang ingin rekomendasi terasa lebih personal',
+    close: 'sebagai jembatan antara tontonan, emosi, dan nilai kebaikan'
+  }
+];
+
+const sectionPools = {
+  opening: [
+    ({ title, year, genreText, voice }) => ({
+      heading: `${title}: membuka percakapan dengan diri sendiri`,
+      body: `${title} (${year}) tidak perlu dibaca hanya sebagai tontonan ${genreText}. Film ini juga bisa menjadi pintu untuk melihat cara manusia merespons keadaan, menata pilihan, dan mengakui perasaan yang sering disimpan diam-diam. Dengan nada ${voice.intro}, artikel ini mencoba menempatkan film sebagai ruang refleksi yang dekat dengan keseharian penonton.`
+    }),
+    ({ title, year, mood, genreText }) => ({
+      heading: `Kenapa ${title} cocok dibaca lewat mood ${mood.label.toLowerCase()}?`,
+      body: `Ada film yang terasa kuat karena alurnya, ada pula yang tinggal lebih lama karena suasana batinnya. ${title} (${year}) bergerak dalam warna ${genreText}, tetapi daya tariknya dapat dibaca lebih jauh melalui mood ${mood.label.toLowerCase()}. Pendekatan ini membuat film tidak berhenti sebagai daftar rekomendasi, melainkan menjadi bahan untuk bertanya: perasaan apa yang sedang ingin ditemani?`
+    }),
+    ({ title, year, genreText, ratingText }) => ({
+      heading: `Mengenal ${title} dari rasa yang ditinggalkan`,
+      body: `Membicarakan ${title} (${year}) bukan cuma soal genre ${genreText}.${ratingText} Yang lebih menarik adalah bagaimana film ini meninggalkan jejak rasa setelah ditonton. Jejak itu bisa berupa tenang, gelisah, haru, keberanian, atau dorongan kecil untuk memperbaiki cara memandang hidup.`
+    }),
+    ({ title, mood, voice }) => ({
+      heading: `Catatan awal untuk penonton ${mood.label.toLowerCase()}`,
+      body: `Saat seseorang memilih mood ${mood.label.toLowerCase()}, ia sebenarnya sedang memberi sinyal bahwa hatinya butuh ditemani dengan cara tertentu. ${title} masuk sebagai salah satu kemungkinan teman menonton: bukan untuk menyelesaikan semua masalah, tetapi untuk memberi ruang jeda. Karena itu, pembahasan ini ditulis untuk ${voice.reader}.`
+    })
+  ],
+  story: [
+    ({ overview, title }) => ({
+      heading: 'Arah cerita yang bisa diikuti pelan-pelan',
+      body: `${overview} Dari titik cerita tersebut, ${title} membuka peluang untuk membaca konflik sebagai sesuatu yang lebih manusiawi. Penonton bisa melihat bagaimana tokoh bergerak, ragu, bertahan, atau berubah ketika keadaan tidak selalu sesuai harapan.`
+    }),
+    ({ overview }) => ({
+      heading: 'Cerita sebagai cermin kecil',
+      body: `${overview} Sinopsis itu dapat menjadi cermin kecil untuk melihat bahwa manusia sering berada di antara keinginan, ketakutan, dan konsekuensi. Ketika film didekati seperti ini, penonton tidak hanya mengikuti alur, tetapi juga belajar membaca tanda-tanda emosi yang muncul selama menonton.`
+    }),
+    ({ overview, title }) => ({
+      heading: `Lapisan konflik dalam ${title}`,
+      body: `${overview} Konflik dalam film seperti ini tidak selalu harus dibaca secara besar dan berat. Kadang yang penting justru detail kecil: tatapan tokoh, keputusan yang terlambat, percakapan yang tidak selesai, atau keberanian untuk tetap berjalan meskipun belum tahu hasilnya.`
+    }),
+    ({ overview }) => ({
+      heading: 'Yang bergerak di balik alur',
+      body: `${overview} Di balik alur tersebut, ada pertanyaan yang lebih dekat dengan kehidupan: bagaimana seseorang bertahan ketika dunianya berubah? Apa yang ia pilih saat tidak semua jalan tampak mudah? Pertanyaan semacam ini membuat film terasa relevan untuk dibaca secara reflektif.`
+    })
+  ],
+  mood: [
+    ({ title, mood }) => ({
+      heading: `Mood ${mood.label.toLowerCase()} sebagai pintu masuk`,
+      body: `${title} dapat dikaitkan dengan mood ${mood.label.toLowerCase()} karena nuansa ceritanya dekat dengan ${mood.fokus}. Mood di sini bukan sekadar kategori aplikasi, tetapi cara untuk memahami kebutuhan batin penonton sebelum memilih tontonan.`
+    }),
+    ({ mood }) => ({
+      heading: 'Ketika perasaan menjadi navigasi',
+      body: `Memilih film lewat mood ${mood.label.toLowerCase()} membuat pengalaman menonton terasa lebih personal. Penonton tidak dipaksa memulai dari genre atau rating, melainkan dari keadaan hatinya sendiri. Dari sana, rekomendasi film bisa menjadi lebih komunikatif dan tidak terasa acak.`
+    }),
+    ({ title, mood }) => ({
+      heading: `${title} dan kebutuhan emosional penonton`,
+      body: `Dalam konteks mood ${mood.label.toLowerCase()}, ${title} dapat menjadi ruang untuk mengenali emosi tanpa harus buru-buru menghakimi diri. Ada perasaan yang perlu ditenangkan, ada yang perlu diterima, ada pula yang perlu diarahkan agar tidak berubah menjadi keputusan yang keliru.`
+    }),
+    ({ mood }) => ({
+      heading: 'Rasa yang tidak harus disembunyikan',
+      body: `Mood ${mood.label.toLowerCase()} menunjukkan bahwa perasaan manusia punya bentuk yang beragam. Film membantu memberi bahasa pada perasaan itu. Ia menghadirkan tokoh, suasana, dan konflik yang membuat penonton merasa: ternyata rasa seperti ini juga bisa dipahami.`
+    })
+  ],
+  dakwah: [
+    ({ title }) => ({
+      heading: 'Nilai dakwah yang hadir secara halus',
+      body: `Nilai dakwah dalam ${title} tidak harus selalu muncul melalui simbol yang terang-terangan. Ia bisa dibaca melalui kesabaran tokoh, keberanian mengakui salah, pilihan untuk memaafkan, atau kemampuan menahan diri ketika keadaan memancing respons yang buruk.`
+    }),
+    ({ title }) => ({
+      heading: 'Dakwah lewat pengalaman, bukan ceramah',
+      body: `${title} memperlihatkan bahwa pesan kebaikan dapat hadir lewat pengalaman cerita. Penonton tidak hanya diberi nasihat, tetapi diajak melihat akibat dari pilihan, luka dari keputusan, dan harapan yang muncul ketika seseorang berani berubah.`
+    }),
+    ({ title }) => ({
+      heading: 'Membaca tanda kebaikan dalam cerita',
+      body: `Setiap film memiliki cara sendiri untuk menyimpan nilai. Dalam ${title}, nilai itu dapat muncul dari relasi antar tokoh, cara konflik diselesaikan, atau keberanian untuk tetap memilih jalan yang lebih baik. Di sinilah film dapat menjadi media literasi dakwah yang lembut.`
+    }),
+    ({ title }) => ({
+      heading: 'Ruang etis di balik hiburan',
+      body: `Hiburan tidak selalu kosong dari makna. ${title} dapat mengajak penonton melihat ruang etis di balik cerita: apa yang benar, apa yang perlu ditahan, apa yang harus diperbaiki, dan bagaimana manusia belajar dari konsekuensi pilihannya.`
+    })
+  ],
+  dalil: [
+    ({ mood }) => ({
+      heading: 'Dalil sebagai penuntun rasa',
+      body: `Untuk mood ${mood.label.toLowerCase()}, refleksi ini dikuatkan dengan ${mood.dalil}: “${mood.ayat}” Ayat ini menjadi pengingat bahwa perasaan manusia tetap bisa diarahkan. Sedih, bahagia, marah, rindu, gelisah, dan pencarian hidayah semuanya punya ruang untuk kembali kepada Allah.`
+    }),
+    ({ mood }) => ({
+      heading: `Penguat refleksi: ${mood.dalil}`,
+      body: `${mood.dalil} mengingatkan: “${mood.ayat}” Dalam konteks menonton, dalil ini bukan ditempel sebagai hiasan, melainkan menjadi kompas kecil agar pengalaman emosional tidak berhenti pada rasa, tetapi bergerak menuju pemahaman dan perbaikan diri.`
+    }),
+    ({ mood }) => ({
+      heading: 'Menghubungkan tontonan dengan ingatan kepada Allah',
+      body: `Ketika mood ${mood.label.toLowerCase()} muncul, penonton dapat mengingat ${mood.dalil}: “${mood.ayat}” Dari sini, film menjadi pemantik, sementara nilai agama menjadi arah. Keduanya bertemu dalam pengalaman reflektif yang lebih lembut dan tidak memaksa.`
+    })
+  ],
+  literacy: [
+    ({ title }) => ({
+      heading: 'Film sebagai latihan literasi dakwah',
+      body: `Literasi dakwah melalui ${title} berarti melatih kemampuan membaca pesan, bukan hanya membaca teks. Penonton belajar menangkap nilai, memahami konteks, lalu menghubungkannya dengan kehidupan sendiri.`
+    }),
+    ({ title }) => ({
+      heading: 'Dari menonton menjadi memahami',
+      body: `${title} dapat menjadi contoh bagaimana menonton bisa berkembang menjadi proses memahami. Setelah film selesai, penonton masih dapat membawa pulang pertanyaan, catatan, dan nilai yang mungkin berguna dalam kehidupan sehari-hari.`
+    }),
+    ({ title }) => ({
+      heading: 'Mengapa pendekatan mood terasa relevan?',
+      body: `Pendekatan mood membuat ${title} lebih mudah didekati oleh penonton digital. Banyak orang memilih tontonan berdasarkan keadaan hati. IMAN IN MOTION memanfaatkan kebiasaan itu untuk mengarahkan penonton kepada refleksi yang lebih bermakna.`
+    })
+  ],
+  young: [
+    ({ voice }) => ({
+      heading: 'Relevansi untuk penonton muda',
+      body: `Bagi penonton muda, pengalaman digital perlu terasa cepat, personal, dan dekat dengan kebutuhan emosional. Karena itu, artikel seperti ini ditulis untuk ${voice.reader}. Harapannya, pengguna tidak hanya menemukan film, tetapi juga menemukan alasan untuk merenung setelah menonton.`
+    }),
+    ({ title }) => ({
+      heading: 'Dekat dengan budaya rekomendasi hari ini',
+      body: `Di tengah banjir konten, ${title} tidak cukup hanya ditampilkan sebagai judul film. Ia perlu diberi konteks: mood apa yang cocok, nilai apa yang bisa dibaca, dan kenapa film itu relevan bagi penonton yang sedang berada dalam keadaan tertentu.`
+    }),
+    ({ title }) => ({
+      heading: 'Lebih dari sekadar daftar tontonan',
+      body: `${title} menunjukkan bahwa rekomendasi film bisa dibuat lebih manusiawi. Sistem tidak hanya menyodorkan judul, tetapi juga membantu pengguna memahami alasan emosional dan reflektif di balik pilihan tersebut.`
+    })
+  ],
+  closing: [
+    ({ title, voice }) => ({
+      heading: 'Penutup',
+      body: `Pada akhirnya, ${title} dapat dibaca ${voice.close}. Film mungkin tidak memberi jawaban final, tetapi ia bisa membuka jalan untuk memahami diri, menata rasa, dan mengambil nilai yang lebih baik setelah menonton.`
+    }),
+    ({ title, mood }) => ({
+      heading: 'Apa yang bisa dibawa pulang?',
+      body: `Dari ${title}, penonton dapat membawa pulang satu hal sederhana: mood ${mood.label.toLowerCase()} tidak harus berhenti sebagai perasaan. Ia bisa menjadi awal untuk berdoa, berpikir, memperbaiki respons, dan melihat kembali arah hidup.`
+    }),
+    ({ title }) => ({
+      heading: 'Setelah layar padam',
+      body: `Setelah ${title} selesai, yang tersisa bukan hanya ingatan pada adegan, tetapi juga kemungkinan untuk membaca diri. Di titik itu, film menjalankan fungsi yang lebih luas: menghibur, menemani, dan membuka ruang refleksi.`
+    })
+  ]
+};
+
+function pickBySeed(pool, seed) {
+  return pool[Math.abs(seed) % pool.length];
+}
+
 function buildLongArticle(article) {
   const moodKey = String(article.mood || 'hidayah').toLowerCase();
   const mood = moodCopy[moodKey] || moodCopy.hidayah;
@@ -51,45 +214,22 @@ function buildLongArticle(article) {
   const year = article.year || '-';
   const genres = splitGenres(article.genres).slice(0, 4);
   const genreText = genres.length ? genres.join(', ') : 'drama dan refleksi kehidupan';
-  const ratingText = article.rating ? ` Film ini juga memiliki penilaian penonton yang cukup menarik, yaitu ${article.rating}, sehingga dapat menjadi salah satu pilihan ketika penonton ingin mencari tontonan yang tidak hanya menghibur, tetapi juga menyisakan ruang pikir.` : '';
+  const ratingText = article.rating ? ` Rating ${article.rating} dapat dibaca sebagai salah satu sinyal bahwa film ini punya daya tarik bagi sebagian penonton, meski nilai utamanya tetap bergantung pada pengalaman menonton masing-masing.` : '';
   const overview = article.overview && article.overview !== 'Sinopsis belum tersedia di dataset.'
     ? article.overview
     : 'Cerita film ini dapat dibaca sebagai ruang untuk melihat manusia ketika berhadapan dengan pilihan, kehilangan, harapan, dan konsekuensi dari tindakan yang ia ambil.';
-
-  return [
-    {
-      heading: `Membaca ${title} sebagai ruang refleksi`,
-      body: `${title} (${year}) dapat dipahami sebagai film yang membuka ruang perenungan melalui nuansa ${genreText}. Ceritanya tidak hanya dapat dinikmati sebagai hiburan, tetapi juga sebagai bahan untuk melihat kembali cara manusia menghadapi tekanan, pilihan, harapan, dan perubahan hidup.${ratingText} Dalam pengalaman menonton, seseorang sering kali tidak hanya mencari alur cerita yang menarik, tetapi juga mencari rasa yang dekat dengan keadaan batinnya. Karena itu, film ini dapat menjadi pintu masuk untuk merenungkan suasana hati, memahami emosi yang sedang bergerak, dan menemukan pesan kebaikan yang relevan dengan kehidupan sehari-hari.`
-    },
-    {
-      heading: 'Sinopsis dan arah emosi cerita',
-      body: `${overview} Dari gambaran cerita tersebut, penonton diajak masuk ke dalam situasi yang tidak selalu sederhana. Ada tokoh, konflik, pilihan, dan konsekuensi yang dapat dibaca sebagai cermin dari kehidupan manusia. Film seperti ini dapat membantu penonton mengambil jarak dari perasaannya sendiri. Ketika seseorang sedang lelah, marah, rindu, bahagia, gelisah, atau sedang mencari arah, cerita film dapat menjadi bahasa yang lebih lembut untuk memahami diri. Ia tidak langsung menggurui, tetapi menghadirkan pengalaman emosional yang perlahan membuka ruang renungan.`
-    },
-    {
-      heading: `Keterkaitan dengan mood ${mood.label.toLowerCase()}`,
-      body: `${title} dapat dikaitkan dengan mood ${mood.label.toLowerCase()} karena nuansa ceritanya dekat dengan ${mood.fokus}. Mood bukan hanya label perasaan, melainkan tanda bahwa seseorang sedang membutuhkan cara tertentu untuk ditemani. Ketika pengguna memilih mood ${mood.label.toLowerCase()}, rekomendasi film diarahkan agar sesuai dengan kebutuhan batin tersebut. Film yang dipilih kemudian tidak berhenti sebagai tontonan, tetapi menjadi bahan awal untuk membaca keadaan hati. Dari sana, penonton dapat bertanya: apa yang sedang aku rasakan, apa yang perlu aku kendalikan, dan nilai apa yang bisa aku bawa setelah menonton cerita ini?`
-    },
-    {
-      heading: 'Nilai dakwah yang dapat dibaca',
-      body: `Nilai dakwah dalam film tidak selalu harus muncul melalui simbol keagamaan yang terang-terangan. Kadang nilai itu hadir melalui perjuangan tokoh, keberanian mengakui kesalahan, kemampuan memaafkan, kesabaran menghadapi kehilangan, atau keputusan untuk tetap memilih jalan yang benar meskipun tidak mudah. Dalam ${title}, penonton dapat membaca bagaimana manusia diuji oleh keadaan dan bagaimana respons terhadap ujian itu membentuk arah hidupnya. Di titik inilah film dapat menjadi media dakwah yang lembut, sebab pesan kebaikan hadir melalui cerita yang dekat dengan pengalaman manusia.`
-    },
-    {
-      heading: 'Dalil sebagai penguat refleksi',
-      body: `Untuk mood ${mood.label.toLowerCase()}, refleksi ini dikuatkan dengan ${mood.dalil}: “${mood.ayat}” Dalil ini dapat dibaca sebagai pengingat bahwa setiap perasaan tetap memiliki ruang untuk diarahkan kepada Allah. Saat sedih, manusia tidak ditinggalkan. Saat gelisah, hati bisa kembali tenang melalui zikir. Saat marah, ada kemuliaan dalam menahan diri. Saat bahagia, ada syukur yang perlu dijaga. Saat rindu, ada doa yang menghidupkan ingatan. Saat mencari hidayah, ada harapan bahwa perubahan diri selalu mungkin terjadi.`
-    },
-    {
-      heading: 'Film sebagai media literasi dakwah',
-      body: `Literasi dakwah tidak hanya berbicara tentang kemampuan membaca teks agama, tetapi juga kemampuan membaca pesan, nilai, dan tanda kebaikan dalam kehidupan. Film dapat menjadi media literasi karena ia menghadirkan cerita yang bisa dilihat, dirasakan, dan didiskusikan. Melalui film, pesan dakwah dapat hadir dalam bentuk yang lebih dekat dengan budaya digital. Penonton tidak hanya diberi nasihat, tetapi diajak melihat contoh, konflik, dan perjalanan tokoh. Dengan demikian, pengalaman menonton dapat berkembang menjadi pengalaman memahami nilai.`
-    },
-    {
-      heading: 'Relevansi bagi penonton muda',
-      body: `Bagi penonton muda, pilihan tontonan sering dipengaruhi oleh mood, rekomendasi, visual, dan kedekatan cerita dengan kehidupan pribadi. Pendekatan berbasis mood membuat proses memilih film terasa lebih personal. Seseorang yang sedang gelisah tidak harus langsung membaca uraian panjang; ia dapat memulai dari memilih suasana hati, menonton film yang sesuai, lalu membaca pesan reflektif yang menyertainya. Cara ini membuat dakwah hadir melalui jalur yang lebih komunikatif, akrab, dan tidak terasa jauh dari keseharian.`
-    },
-    {
-      heading: 'Penutup',
-      body: `Pada akhirnya, ${title} dapat menjadi teman refleksi bagi penonton yang ingin menikmati film sekaligus mengambil makna. Cerita film mungkin tidak selalu memberikan jawaban final, tetapi ia dapat membuka pertanyaan yang penting: bagaimana manusia menghadapi keadaan, bagaimana hati ditata kembali, dan bagaimana nilai kebaikan tetap dijaga dalam situasi yang berubah. Jika dibaca dengan kesadaran seperti ini, film tidak hanya menjadi hiburan, tetapi juga ruang untuk memperhalus rasa, memperkuat pikiran, dan mendekatkan diri pada nilai dakwah yang lebih hidup.`
-    }
+  const seed = Number(article.id || article.movieId || title.length) || 1;
+  const voice = pickBySeed(articleVoices, seed);
+  const ctx = { article, mood, title, year, genreText, ratingText, overview, voice };
+  const orderOptions = [
+    ['opening', 'story', 'mood', 'dakwah', 'dalil', 'literacy', 'young', 'closing'],
+    ['opening', 'mood', 'story', 'dalil', 'dakwah', 'young', 'literacy', 'closing'],
+    ['opening', 'story', 'dakwah', 'mood', 'literacy', 'dalil', 'young', 'closing'],
+    ['opening', 'mood', 'dalil', 'story', 'dakwah', 'literacy', 'young', 'closing'],
+    ['opening', 'story', 'young', 'mood', 'dakwah', 'dalil', 'literacy', 'closing']
   ];
+  const order = pickBySeed(orderOptions, seed);
+  return order.map((key, index) => pickBySeed(sectionPools[key], seed + index * 7)(ctx));
 }
 
 export default function ArticleDetail({ path }) {
@@ -111,6 +251,13 @@ export default function ArticleDetail({ path }) {
   const paragraphs = buildLongArticle(article);
   const moodKey = String(article.mood || 'hidayah').toLowerCase();
   const mood = moodCopy[moodKey] || moodCopy.hidayah;
+  const relatedCandidates = articles
+    .filter((item) => String(item.id || item.movieId || item.title) !== String(id))
+    .filter((item) => String(item.mood || '').toLowerCase() === moodKey || String(item.genres || '').toLowerCase().includes(String(article.genres || '').split(/[|,]/)[0]?.trim().toLowerCase()))
+    .slice(0, 3);
+  const related = relatedCandidates.length ? relatedCandidates : articles
+    .filter((item) => String(item.id || item.movieId || item.title) !== String(id))
+    .slice(0, 3);
 
   return (
     <section className="container-page max-w-6xl py-10 md:py-14">
@@ -155,6 +302,15 @@ export default function ArticleDetail({ path }) {
           </div>
         </div>
       </article>
+
+      {related.length > 0 && (
+        <section className="mt-10">
+          <p className="section-eyebrow">Baca juga</p>
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+            {related.map((item) => <ArticleCard key={item.id || item.movieId || item.title} article={item} />)}
+          </div>
+        </section>
+      )}
     </section>
   );
 }
