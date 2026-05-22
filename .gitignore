@@ -6,3 +6,7 @@ __pycache__/
 .vercel
 .env*.local
 bin/
+dist/
+.env.*
+!.env.example
+.zip

@@ -1,7 +1,12 @@
 import { normalizeTrailer } from '../utils/trailer';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/$/, '') || '';
+function apiUrl(path) {
+  return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
+}
+
 export async function sendAimanMessage(message, history = [], options = {}) {
-  const response = await fetch('/api/chat', {
+  const response = await fetch(apiUrl('/api/chat'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, history, ...options })
@@ -34,7 +39,7 @@ export async function fetchTrailerUrl(movie) {
     title: movie?.title || movie?.raw?.title_asli || '',
     year: movie?.year || movie?.raw?.year || ''
   });
-  const response = await fetch(`/api/trailer/${encodeURIComponent(tmdbId)}?${params.toString()}`);
+  const response = await fetch(apiUrl(`/api/trailer/${encodeURIComponent(tmdbId)}?${params.toString()}`));
   const data = await response.json().catch(() => ({}));
   const normalized = normalizeTrailer(data);
   if (!response.ok || !normalized.hasTrailer) {
@@ -49,7 +54,7 @@ export async function fetchTmdbRating(movie) {
     throw new Error('Rating TMDB belum tersedia karena film ini belum punya tmdbId di data.');
   }
 
-  const response = await fetch(`/api/rating/${encodeURIComponent(tmdbId)}`);
+  const response = await fetch(apiUrl(`/api/rating/${encodeURIComponent(tmdbId)}`));
   const data = await response.json().catch(() => ({}));
   if (!response.ok || !data.rating) {
     throw new Error(data.message || 'Rating TMDB belum ditemukan.');

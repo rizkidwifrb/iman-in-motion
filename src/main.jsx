@@ -65,8 +65,9 @@ const routes = {
 const mobileSwipeRoutes = ['/', '/mood', '/film', '/articles', '/aiman'];
 
 function getPath() {
-  const hash = window.location.hash.replace('#', '') || '/';
-  const clean = hash.split('?')[0];
+  const hash = window.location.hash.replace('#', '');
+  const rawPath = hash || window.location.pathname || '/';
+  const clean = rawPath.split('?')[0];
   return clean.startsWith('/') ? clean : `/${clean}`;
 }
 
