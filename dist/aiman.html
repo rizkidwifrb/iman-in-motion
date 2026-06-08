@@ -229,16 +229,9 @@ document.getElementById('newChat').onclick=()=>location.reload();
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDi3zOmx6tf9MSCMp7HDlCk4-5QY4nZK7E",
-  authDomain: "uwiberani-project.firebaseapp.com",
-  projectId: "uwiberani-project",
-  storageBucket: "uwiberani-project.appspot.com",
-  messagingSenderId: "735078024592",
-  appId: "1:735078024592:web:8e15bb85b0448402425f15"
-};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+const firebaseConfig = window.IIM_FIREBASE_CONFIG || {};
+const app = firebaseConfig.apiKey ? initializeApp(firebaseConfig) : null;
+const auth = app ? getAuth(app) : null;
 const provider = new GoogleAuthProvider();
 
 const modal = document.getElementById('authModal');

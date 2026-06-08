@@ -2,14 +2,10 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: "/iman-in-motion/",
+  base: "/",
   plugins: [react()],
   server: {
-    port: 5173,
-    proxy: {
-      '/api': 'http://localhost:8080',
-      '/health': 'http://localhost:8080'
-    }
+    port: 5173
   },
   build: {
     minify: 'esbuild',
@@ -17,13 +13,19 @@ export default defineConfig({
     sourcemap: false,
     outDir: 'dist',
     emptyOutDir: true,
+    chunkSizeWarningLimit: 750,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined;
-          if (id.includes('firebase')) return 'vendor-firebase';
-          if (id.includes('lucide-react')) return 'vendor-icons';
-          if (id.includes('react') || id.includes('react-dom')) return 'vendor-react';
+          const normalizedId = id.replace(/\\/g, '/');
+          if (!normalizedId.includes('/node_modules/')) return undefined;
+          if (normalizedId.includes('/node_modules/firebase/')) return 'vendor-firebase';
+          if (normalizedId.includes('/node_modules/lucide-react/')) return 'vendor-icons';
+          if (
+            normalizedId.includes('/node_modules/react/') ||
+            normalizedId.includes('/node_modules/react-dom/') ||
+            normalizedId.includes('/node_modules/scheduler/')
+          ) return 'vendor-react';
           return 'vendor';
         }
       }

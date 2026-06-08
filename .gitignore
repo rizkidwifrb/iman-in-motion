@@ -9,4 +9,4 @@ bin/
 dist/
 .env.*
 !.env.example
-.zip
+*.zip

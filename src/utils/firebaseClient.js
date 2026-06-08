@@ -1,10 +1,11 @@
 const firebaseConfig = {
-  apiKey: 'AIzaSyDi3zOmx6tf9MSCMp7HDlCk4-5QY4nZK7E',
-  authDomain: 'uwiberani-project.firebaseapp.com',
-  projectId: 'uwiberani-project',
-  storageBucket: 'uwiberani-project.appspot.com',
-  messagingSenderId: '735078024592',
-  appId: '1:735078024592:web:8e15bb85b0448402425f15'
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
 };
 
 let appCache = null;
@@ -14,6 +15,9 @@ let authSdkCache = null;
 let firestoreSdkCache = null;
 
 async function loadAppSdk() {
+  if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.appId) {
+    throw new Error('Firebase belum dikonfigurasi. Isi VITE_FIREBASE_* di file .env.production sebelum build.');
+  }
   const appSdk = await import(/* @vite-ignore */ 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
   appCache = appSdk.getApps?.()?.[0] || appCache || appSdk.initializeApp(firebaseConfig);
   return { app: appCache, appSdk };

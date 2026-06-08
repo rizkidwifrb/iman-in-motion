@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import './styles/index.css';
-import { BookOpen, Copyright, Film as FilmIcon, Home as HomeIcon, Info as InfoIcon, Menu, MessageCircle, Moon, Settings, ShieldCheck, SmilePlus, Sun, UserRound, X } from 'lucide-react';
+import { BookOpen, ChevronRight, Copyright, Film as FilmIcon, HelpCircle, Home as HomeIcon, Info as InfoIcon, Languages, LogOut, Menu, MessageCircle, Moon, Palette, Settings, ShieldCheck, SmilePlus, Sun, Trash2, UserRound, X } from 'lucide-react';
 import { PageSkeleton } from './components/Skeletons';
 
 const Home = React.lazy(() => import('./pages/Home'));
@@ -20,6 +20,7 @@ import { initialsFromUser, migrateLocalAccountDataToFirestore } from './utils/ac
 import { loadFirebaseAuthClient } from './utils/firebaseClient';
 import { getCopy, languageOptions } from './utils/i18n';
 import { initMotionExperience } from './utils/motionExperience';
+import { assetUrl } from './utils/assetUrl';
 
 
 async function loadFirebaseAuth() {
@@ -66,7 +67,16 @@ const mobileSwipeRoutes = ['/', '/mood', '/film', '/articles', '/aiman'];
 
 function getPath() {
   const hash = window.location.hash.replace('#', '');
-  const rawPath = hash || window.location.pathname || '/';
+  if (hash) {
+    const cleanHash = hash.split('?')[0];
+    return cleanHash.startsWith('/') ? cleanHash : `/${cleanHash}`;
+  }
+
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+  let rawPath = window.location.pathname || '/';
+  if (base && rawPath.startsWith(base)) {
+    rawPath = rawPath.slice(base.length) || '/';
+  }
   const clean = rawPath.split('?')[0];
   return clean.startsWith('/') ? clean : `/${clean}`;
 }
@@ -89,7 +99,30 @@ function ThemeToggle({ theme, setTheme }) {
   );
 }
 
-function AuthModal({ mode, setMode, close }) {
+function authErrorMessage(err) {
+  const code = err?.code || '';
+  const rawMessage = String(err?.message || err || '');
+  if (rawMessage.includes('Firebase belum dikonfigurasi')) {
+    return 'Firebase belum dikonfigurasi. Isi VITE_FIREBASE_* di file .env.production lalu build ulang.';
+  }
+  if (rawMessage.includes('API_KEY_HTTP_REFERRER_BLOCKED')) {
+    return 'Login Google ditolak karena domain belum diizinkan di pembatasan API key Google Cloud. Tambahkan domain hosting ke HTTP referrers.';
+  }
+  const map = {
+    'auth/email-already-in-use': 'Email sudah terdaftar. Silakan masuk.',
+    'auth/invalid-email': 'Format email belum valid.',
+    'auth/weak-password': 'Password minimal 6 karakter.',
+    'auth/user-not-found': 'Akun tidak ditemukan. Coba daftar terlebih dahulu.',
+    'auth/wrong-password': 'Password salah.',
+    'auth/invalid-credential': 'Email atau password salah.',
+    'auth/popup-blocked': 'Popup Google diblokir browser. Izinkan popup lalu coba lagi.',
+    'auth/unauthorized-domain': 'Domain ini belum diizinkan di Firebase Authentication. Tambahkan domain hosting di Authorized domains Firebase.',
+    'auth/invalid-api-key': 'Firebase API key tidak valid. Periksa VITE_FIREBASE_API_KEY di .env.production sebelum build.'
+  };
+  return map[code] || 'Login belum berhasil. Coba beberapa saat lagi.';
+}
+
+function AuthModal({ mode, setMode, close, theme, setTheme }) {
   const [tab, setTab] = useState('masuk');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -100,6 +133,7 @@ function AuthModal({ mode, setMode, close }) {
     try { return JSON.parse(localStorage.getItem('iman_user') || 'null'); } catch { return null; }
   });
   const [language, setLanguage] = useState(() => localStorage.getItem('iim-language') || 'id');
+  const [closing, setClosing] = useState(false);
   const tSettings = getCopy(language).settings;
 
   function changeLanguage(code) {
@@ -117,6 +151,7 @@ function AuthModal({ mode, setMode, close }) {
       setTab('masuk');
       setError('');
     }
+    if (mode) setClosing(false);
   }, [mode]);
 
   useEffect(() => {
@@ -134,18 +169,14 @@ function AuthModal({ mode, setMode, close }) {
 
   if (!mode) return null;
 
+  function requestClose() {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(() => close(), 220);
+  }
+
   function readableError(err) {
-    const code = err?.code || '';
-    const map = {
-      'auth/email-already-in-use': 'Email sudah terdaftar. Silakan masuk.',
-      'auth/invalid-email': 'Format email belum valid.',
-      'auth/weak-password': 'Password minimal 6 karakter.',
-      'auth/user-not-found': 'Akun tidak ditemukan. Coba daftar terlebih dahulu.',
-      'auth/wrong-password': 'Password salah.',
-      'auth/invalid-credential': 'Email atau password salah.',
-      'auth/popup-blocked': 'Popup Google diblokir browser. Izinkan popup lalu coba lagi.'
-    };
-    return map[code] || 'Login belum berhasil. Coba beberapa saat lagi.';
+    return authErrorMessage(err);
   }
 
   async function loginWithGoogle() {
@@ -155,7 +186,7 @@ function AuthModal({ mode, setMode, close }) {
       const { auth, signInWithPopup, provider } = await loadFirebaseAuth();
       const result = await signInWithPopup(auth, provider);
       storeFirebaseUser(result.user);
-      close();
+      requestClose();
     } catch (err) {
       if (!['auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(err?.code)) {
         setError(readableError(err));
@@ -188,7 +219,7 @@ function AuthModal({ mode, setMode, close }) {
         credential = await signInWithEmailAndPassword(auth, email.trim(), password);
       }
       storeFirebaseUser(credential.user);
-      close();
+      requestClose();
     } catch (err) {
       setError(readableError(err));
     } finally {
@@ -203,7 +234,7 @@ function AuthModal({ mode, setMode, close }) {
       await signOut(auth);
       storeFirebaseUser(null);
       setSavedUser(null);
-      close();
+      requestClose();
     } finally {
       setLoading(false);
     }
@@ -211,64 +242,101 @@ function AuthModal({ mode, setMode, close }) {
 
   function goInfo(tab) {
     window.location.hash = `#/info?tab=${tab}`;
-    close();
+    requestClose();
+  }
+
+  function openAccount() {
+    if (savedUser) {
+      window.location.hash = '#/account';
+      requestClose();
+      return;
+    }
+    setMode('auth');
+  }
+
+  function clearHistory() {
+    localStorage.removeItem('iman_last_mood');
+    localStorage.removeItem('iman_chat_history');
+    window.dispatchEvent(new CustomEvent('iim-toast', { detail: 'Riwayat lokal dibersihkan.' }));
   }
 
   const settingMenus = [
-    { title: tSettings.title || 'Pengaturan', icon: '⚙', action: () => { localStorage.removeItem('iman_last_mood'); localStorage.removeItem('iman_chat_history'); }, actionLabel: tSettings.clearHistory || 'Hapus riwayat' },
-    { title: tSettings.account || 'Akun', icon: '👤', action: () => { if (savedUser) { window.location.hash = '#/account'; close(); } else setMode('auth'); }, actionLabel: savedUser ? (tSettings.open || 'Buka') : (tSettings.signIn || 'Masuk') },
-    { title: tSettings.aboutApp || 'Tentang IMAN IN MOTION', icon: 'ℹ', action: () => goInfo('about'), actionLabel: tSettings.open || 'Buka' },
-    { title: tSettings.aboutFounder || 'About Founder', icon: '👤', action: () => goInfo('team'), actionLabel: tSettings.view || 'Lihat' },
-    { title: tSettings.copyright || 'Hak Cipta', icon: '©', action: () => goInfo('copyright'), actionLabel: tSettings.soon || 'Soon' },
-    { title: tSettings.help || 'Bantuan', icon: '💬', action: () => goInfo('help'), actionLabel: tSettings.contact || 'Kontak' }
+    { title: 'Akun', icon: UserRound, action: openAccount, actionLabel: savedUser ? 'Buka' : 'Masuk' },
+    { title: 'Tentang', icon: InfoIcon, action: () => goInfo('about'), actionLabel: 'Info' },
+    { title: 'Bantuan', icon: HelpCircle, action: () => goInfo('help'), actionLabel: 'Kontak' }
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="max-h-[86vh] w-full max-w-md overflow-y-auto rounded-[1.75rem] border border-white/10 bg-iim-cream p-4 shadow-premium dark:bg-[#19140f] sm:p-5">
+    <div className={`modal-backdrop-premium fixed inset-0 z-[100] grid place-items-center bg-black/60 p-4 backdrop-blur-sm ${closing ? 'is-closing' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && requestClose()}>
+      <div className={`modal-panel-premium max-h-[86vh] w-full max-w-md overflow-y-auto rounded-[1.75rem] border border-white/10 bg-iim-cream p-4 shadow-premium dark:bg-[#19140f] sm:p-5 ${mode === 'settings' ? 'settings-panel' : ''} ${closing ? 'is-closing' : ''}`}>
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="section-eyebrow">{mode === 'settings' ? tSettings.eyebrow : 'Akun IMAN'}</p>
             <h2 className="mt-1 text-xl font-black text-iim-coffee dark:text-iim-cream sm:text-2xl">{mode === 'settings' ? tSettings.title : 'Masuk atau daftar'}</h2>
           </div>
-          <button className="grid h-11 w-11 place-items-center rounded-2xl border border-iim-brown/15 dark:border-white/10" onClick={close} aria-label="Tutup"><X size={18} /></button>
+          <button className="grid h-11 w-11 place-items-center rounded-2xl border border-iim-brown/15 transition hover:-translate-y-0.5 hover:border-iim-gold dark:border-white/10" onClick={requestClose} aria-label="Tutup"><X size={18} /></button>
         </div>
 
         {mode === 'settings' ? (
-          <div className="mt-5 space-y-3">
-            <div className="rounded-2xl border border-iim-brown/10 bg-white/60 p-3 dark:border-white/10 dark:bg-white/10">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-iim-brown dark:text-iim-gold">{tSettings.language}</p>
-                  <p className="mt-1 text-sm font-black text-iim-coffee dark:text-iim-cream">{tSettings.changeDisplayLanguage || tSettings.chooseLanguage}</p>
-                </div>
-                <span className="rounded-full bg-iim-gold px-3 py-1.5 text-[11px] font-black text-iim-charcoal">{languageOptions.find((item) => item.code === language)?.label}</span>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="settings-menu mt-5 space-y-2.5">
+            {settingMenus.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.title}
+                  type="button"
+                  onClick={item.action}
+                  className="settings-row"
+                  style={{ '--settings-delay': `${index * 0.035}s` }}
+                >
+                  <span className="settings-row-main">
+                    <span className="settings-row-icon"><Icon size={17} /></span>
+                    <span className="truncate text-sm font-black text-iim-coffee dark:text-iim-cream">{item.title}</span>
+                  </span>
+                  <span className="settings-row-action">{item.actionLabel}<ChevronRight size={14} /></span>
+                </button>
+              );
+            })}
+
+            <label className="settings-row" style={{ '--settings-delay': '0.105s' }}>
+              <span className="settings-row-main">
+                <span className="settings-row-icon"><Languages size={17} /></span>
+                <span className="text-sm font-black text-iim-coffee dark:text-iim-cream">Bahasa</span>
+              </span>
+              <select
+                className="settings-select"
+                value={language}
+                onChange={(event) => changeLanguage(event.target.value)}
+                aria-label="Bahasa"
+              >
                 {languageOptions.map((item) => (
-                  <button
-                    key={item.code}
-                    type="button"
-                    onClick={() => changeLanguage(item.code)}
-                    className={`rounded-xl border px-3 py-2 text-left text-xs font-extrabold transition ${language === item.code ? 'border-iim-gold bg-iim-gold text-iim-charcoal shadow-glow' : 'border-iim-brown/10 bg-white/55 text-iim-coffee hover:border-iim-gold dark:border-white/10 dark:bg-white/10 dark:text-iim-cream'}`}
-                  >
-                    <span className="block">{item.label}</span>
-                    <span className="block text-[10px] opacity-70">{item.native}</span>
-                  </button>
+                  <option key={item.code} value={item.code}>{item.label}</option>
                 ))}
-              </div>
-            </div>
-            {settingMenus.map((item) => (
-              <button key={item.title} type="button" onClick={item.action} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-iim-brown/10 bg-white/60 px-3.5 py-3 text-left transition hover:border-iim-gold hover:bg-white dark:border-white/10 dark:bg-white/10 dark:hover:bg-white/15">
-                <span className="flex min-w-0 items-center gap-3">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-iim-gold/20 text-sm font-black text-iim-gold">{item.icon}</span>
-                  <span className="truncate text-sm font-black text-iim-coffee dark:text-iim-cream">{item.title}</span>
-                </span>
-                <span className="shrink-0 rounded-full bg-iim-gold px-3 py-1.5 text-[11px] font-black text-iim-charcoal">{item.actionLabel}</span>
+              </select>
+            </label>
+
+            <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="settings-row" style={{ '--settings-delay': '0.14s' }}>
+              <span className="settings-row-main">
+                <span className="settings-row-icon"><Palette size={17} /></span>
+                <span className="text-sm font-black text-iim-coffee dark:text-iim-cream">Tema</span>
+              </span>
+              <span className="settings-toggle" aria-hidden="true">
+                <span className={theme === 'dark' ? 'translate-x-5' : ''} />
+              </span>
+            </button>
+
+            <div className="settings-secondary-row">
+              <button type="button" onClick={clearHistory} className="settings-secondary-action">
+                <Trash2 size={13} />
+                Hapus riwayat
               </button>
-            ))}
+            </div>
+
             {savedUser && (
-              <button type="button" disabled={loading} onClick={logout} className="mt-3 w-full rounded-2xl bg-iim-coffee px-4 py-3 text-sm font-extrabold text-iim-cream dark:bg-iim-gold dark:text-iim-charcoal">{tSettings.logout || 'Keluar akun'}</button>
+              <button type="button" disabled={loading} onClick={logout} className="settings-logout">
+                <LogOut size={16} />
+                Keluar
+              </button>
             )}
           </div>
         ) : (
@@ -341,6 +409,7 @@ function Navbar({ path, theme, setTheme }) {
     } catch (err) {
       if (!['auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(err?.code)) {
         setModal('auth');
+        setToast(authErrorMessage(err));
       }
     }
   }
@@ -378,7 +447,7 @@ function Navbar({ path, theme, setTheme }) {
       <header className="sticky top-0 z-50 border-b border-iim-brown/10 bg-iim-cream/86 backdrop-blur-2xl dark:border-white/10 dark:bg-iim-charcoal/86">
         <div className="desktop-header-grid container-page hidden h-20 items-center justify-between gap-3 md:grid">
           <Link to="/" className="desktop-brand flex items-center gap-3">
-            <img src="/logo.png" alt="IMAN IN MOTION" className="h-12 w-12 rounded-2xl object-contain shadow-glow" />
+            <img src={assetUrl('logo.png')} alt="IMAN IN MOTION" className="h-12 w-12 rounded-2xl object-contain shadow-glow" />
             <div>
               <p className="text-sm font-extrabold tracking-[0.22em] text-iim-coffee dark:text-iim-cream">IMAN IN MOTION</p>
               <p className="text-xs font-semibold text-iim-brown dark:text-iim-sand">{t.home.eyebrow}</p>
@@ -415,7 +484,7 @@ function Navbar({ path, theme, setTheme }) {
             {mobileOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
           <Link to="/" className="mobile-brand-lockup" aria-label="IMAN IN MOTION Home">
-            <img src="/logo.png" alt="IMAN IN MOTION" />
+            <img src={assetUrl('logo.png')} alt="IMAN IN MOTION" />
             <div>
               <p><span>IMAN IN</span><span>MOTION</span></p>
             </div>
@@ -470,7 +539,7 @@ function Navbar({ path, theme, setTheme }) {
         ))}
       </nav>
       {toast && <div className="iim-toast">{toast}</div>}
-      <AuthModal mode={modal} setMode={setModal} close={() => setModal(null)} />
+      <AuthModal mode={modal} setMode={setModal} close={() => setModal(null)} theme={theme} setTheme={setTheme} />
     </>
   );
 }
@@ -512,7 +581,7 @@ function SplashScreen({ onDone }) {
       <span className="splash-spark spark-b" aria-hidden="true">✧</span>
       <span className="splash-center splash-center-lite">
         <span className="splash-logo-wrap splash-logo-wrap-lite">
-          <img src="/logo.png" alt="IMAN IN MOTION" className="splash-logo" decoding="async" fetchpriority="high" />
+          <img src={assetUrl('logo.png')} alt="IMAN IN MOTION" className="splash-logo" decoding="async" fetchpriority="high" />
         </span>
         <span className="splash-copy splash-copy-lite">
           <span className="splash-title splash-title-lite">IMAN IN MOTION</span>
@@ -535,7 +604,7 @@ function App() {
   useEffect(() => {
     const handler = () => setPath(getPath());
     window.addEventListener('hashchange', handler);
-    if (!window.location.hash) window.location.hash = '/';
+    if (!window.location.hash && window.location.pathname === '/') window.location.hash = '/';
     return () => window.removeEventListener('hashchange', handler);
   }, []);
 
@@ -656,7 +725,8 @@ function App() {
       <div className={`min-h-screen text-iim-coffee dark:text-iim-cream ${isAimanRoute ? 'is-aiman-route' : ''}`}>
       <Navbar path={path} theme={theme} setTheme={setThemeState} />
       <main
-        className="fade-in mobile-swipe-stage"
+        key={path}
+        className="fade-in page-transition mobile-swipe-stage"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -676,7 +746,7 @@ function App() {
               <span>Terdaftar Hak Cipta sebagai Program Komputer pada Kementerian Hukum Republik Indonesia. No. Pencatatan: <strong className="text-iim-coffee dark:text-iim-cream">001241778</strong>.</span>
             </p>
             <a
-              href="/sertifikat-hak-cipta-iman-in-motion.pdf"
+              href={assetUrl('sertifikat-hak-cipta-iman-in-motion.pdf')}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-iim-gold/30 bg-iim-gold/15 px-3 py-2 font-black text-iim-coffee transition hover:-translate-y-0.5 hover:bg-iim-gold/25 dark:text-iim-cream"

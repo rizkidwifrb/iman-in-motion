@@ -1,0 +1,483 @@
+[
+  {
+    "topic": "sabar",
+    "keywords": ["sabar", "ujian", "musibah", "tabah", "kuat"],
+    "quran": [
+      {
+        "surah": "Al-Baqarah",
+        "ayah": 153,
+        "arabic": "يَا أَيُّهَا الَّذِينَ آمَنُوا اسْتَعِينُوا بِالصَّبْرِ وَالصَّلَاةِ ۚ إِنَّ اللَّهَ مَعَ الصَّابِرِينَ",
+        "transliteration": "Ya ayyuhalladzina amanu ista'inu bish-shabri wash-shalah, innallaha ma'ash-shabirin.",
+        "translation_id": "Wahai orang-orang yang beriman, mohonlah pertolongan kepada Allah dengan sabar dan salat. Sesungguhnya Allah beserta orang-orang yang sabar.",
+        "explanation": "Sabar dalam ayat ini bukan pasif, tetapi keteguhan hati sambil tetap mencari pertolongan Allah melalui salat."
+      }
+    ],
+    "hadith": [
+      {
+        "source": "HR. Muslim",
+        "arabic": "",
+        "translation_id": "Sungguh menakjubkan urusan seorang mukmin. Semua urusannya baik baginya. Jika mendapat kesenangan ia bersyukur, maka itu baik baginya. Jika ditimpa kesusahan ia bersabar, maka itu baik baginya.",
+        "grade": "Sahih",
+        "explanation": "Hadis ini mengajarkan bahwa sabar dan syukur membuat setiap keadaan bernilai kebaikan bagi seorang mukmin."
+      }
+    ]
+  },
+  {
+    "topic": "syukur",
+    "keywords": ["syukur", "bersyukur", "nikmat", "alhamdulillah"],
+    "quran": [
+      {
+        "surah": "Ibrahim",
+        "ayah": 7,
+        "arabic": "لَئِنْ شَكَرْتُمْ لَأَزِيدَنَّكُمْ",
+        "transliteration": "La'in syakartum la'azidannakum.",
+        "translation_id": "Sesungguhnya jika kamu bersyukur, niscaya Aku akan menambah nikmat kepadamu.",
+        "explanation": "Syukur membuat nikmat tidak hanya dirasakan, tetapi juga diarahkan menjadi ketaatan dan kebaikan."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "taubat",
+    "keywords": ["taubat", "tobat", "dosa", "ampunan", "kembali"],
+    "quran": [
+      {
+        "surah": "Az-Zumar",
+        "ayah": 53,
+        "arabic": "قُلْ يَا عِبَادِيَ الَّذِينَ أَسْرَفُوا عَلَىٰ أَنْفُسِهِمْ لَا تَقْنَطُوا مِنْ رَحْمَةِ اللَّهِ",
+        "transliteration": "Qul ya 'ibadiyalladzina asrafu 'ala anfusihim la taqnathu min rahmatillah.",
+        "translation_id": "Katakanlah, wahai hamba-hamba-Ku yang melampaui batas terhadap diri mereka sendiri, janganlah berputus asa dari rahmat Allah.",
+        "explanation": "Ayat ini membuka harapan bagi siapa pun yang ingin kembali kepada Allah dengan taubat."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "shalat",
+    "keywords": ["shalat", "salat", "ibadah", "doa"],
+    "quran": [
+      {
+        "surah": "Taha",
+        "ayah": 14,
+        "arabic": "وَأَقِمِ الصَّلَاةَ لِذِكْرِي",
+        "transliteration": "Wa aqimish-shalata lidzikri.",
+        "translation_id": "Dirikanlah salat untuk mengingat Aku.",
+        "explanation": "Salat adalah ruang utama seorang hamba untuk kembali mengingat Allah dan menata hati."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "dakwah",
+    "keywords": ["dakwah", "mengajak", "nasihat", "ceramah", "konten islami"],
+    "quran": [
+      {
+        "surah": "An-Nahl",
+        "ayah": 125,
+        "arabic": "ادْعُ إِلَىٰ سَبِيلِ رَبِّكَ بِالْحِكْمَةِ وَالْمَوْعِظَةِ الْحَسَنَةِ",
+        "transliteration": "Ud'u ila sabili rabbika bil-hikmati wal-mau'izhah al-hasanah.",
+        "translation_id": "Serulah manusia kepada jalan Tuhanmu dengan hikmah dan pengajaran yang baik.",
+        "explanation": "Dakwah perlu disampaikan dengan hikmah, kelembutan, dan cara yang membuat pesan Islam mudah diterima."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "ilmu",
+    "keywords": ["ilmu", "menuntut ilmu", "belajar", "kuliah", "pendidikan"],
+    "quran": [
+      {
+        "surah": "Al-Mujadilah",
+        "ayah": 11,
+        "arabic": "يَرْفَعِ اللَّهُ الَّذِينَ آمَنُوا مِنْكُمْ وَالَّذِينَ أُوتُوا الْعِلْمَ دَرَجَاتٍ",
+        "transliteration": "Yarfa'illahu alladzina amanu minkum walladzina utul-'ilma darajat.",
+        "translation_id": "Allah akan mengangkat derajat orang-orang yang beriman di antara kamu dan orang-orang yang diberi ilmu beberapa derajat.",
+        "explanation": "Ilmu dalam Islam meninggikan derajat karena membimbing iman, akhlak, ibadah, dan manfaat sosial."
+      }
+    ],
+    "hadith": [
+      {
+        "source": "HR. Ibnu Majah",
+        "arabic": "طَلَبُ الْعِلْمِ فَرِيضَةٌ عَلَى كُلِّ مُسْلِمٍ",
+        "translation_id": "Menuntut ilmu itu wajib atas setiap muslim.",
+        "grade": "",
+        "explanation": "Hadis ini masyhur tentang pentingnya menuntut ilmu. Status hadis perlu dicek lebih lanjut pada kitab/sumber takhrij."
+      }
+    ]
+  },
+  {
+    "topic": "akhlak",
+    "keywords": ["akhlak", "adab", "sikap", "budi pekerti"],
+    "quran": [
+      {
+        "surah": "Al-Qalam",
+        "ayah": 4,
+        "arabic": "وَإِنَّكَ لَعَلَىٰ خُلُقٍ عَظِيمٍ",
+        "transliteration": "Wa innaka la'ala khuluqin 'azhim.",
+        "translation_id": "Sesungguhnya engkau benar-benar berbudi pekerti yang agung.",
+        "explanation": "Rasulullah menjadi teladan utama bahwa dakwah paling kuat adalah akhlak yang hidup dalam perilaku."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "orang tua",
+    "keywords": ["orang tua", "ibu", "ayah", "berbakti", "birrul walidain"],
+    "quran": [
+      {
+        "surah": "Al-Isra",
+        "ayah": 23,
+        "arabic": "وَقَضَىٰ رَبُّكَ أَلَّا تَعْبُدُوا إِلَّا إِيَّاهُ وَبِالْوَالِدَيْنِ إِحْسَانًا",
+        "transliteration": "Wa qadha rabbuka alla ta'budu illa iyyahu wa bil-walidaini ihsana.",
+        "translation_id": "Tuhanmu telah memerintahkan agar kamu jangan menyembah selain Dia dan hendaklah berbuat baik kepada kedua orang tua.",
+        "explanation": "Berbakti kepada orang tua ditempatkan dekat dengan tauhid, menunjukkan besarnya kedudukan adab kepada orang tua."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "menjaga lisan",
+    "keywords": ["lisan", "bicara", "omongan", "gibah", "menyakiti"],
+    "quran": [
+      {
+        "surah": "Al-Ahzab",
+        "ayah": 70,
+        "arabic": "يَا أَيُّهَا الَّذِينَ آمَنُوا اتَّقُوا اللَّهَ وَقُولُوا قَوْلًا سَدِيدًا",
+        "transliteration": "Ya ayyuhalladzina amanuttaqullaha wa qulu qaulan sadida.",
+        "translation_id": "Wahai orang-orang yang beriman, bertakwalah kepada Allah dan ucapkanlah perkataan yang benar.",
+        "explanation": "Menjaga lisan berarti memilih ucapan yang benar, adil, dan tidak merusak hati orang lain."
+      }
+    ],
+    "hadith": [
+      {
+        "source": "HR. Bukhari dan Muslim",
+        "arabic": "",
+        "translation_id": "Barang siapa beriman kepada Allah dan hari akhir, hendaklah ia berkata baik atau diam.",
+        "grade": "Sahih",
+        "explanation": "Hadis ini memberi standar sederhana: ucapan yang tidak membawa kebaikan sebaiknya ditahan."
+      }
+    ]
+  },
+  {
+    "topic": "marah",
+    "keywords": ["marah", "emosi", "kesal", "amarah", "benci"],
+    "quran": [
+      {
+        "surah": "Ali Imran",
+        "ayah": 134,
+        "arabic": "وَالْكَاظِمِينَ الْغَيْظَ وَالْعَافِينَ عَنِ النَّاسِ",
+        "transliteration": "Wal-kazhiminal-ghaizha wal-'afina 'anin-nas.",
+        "translation_id": "Dan orang-orang yang menahan amarahnya dan memaafkan kesalahan orang lain.",
+        "explanation": "Islam mengarahkan marah agar dikendalikan, bukan diledakkan tanpa pertimbangan."
+      }
+    ],
+    "hadith": [
+      {
+        "source": "HR. Bukhari",
+        "arabic": "لَا تَغْضَبْ",
+        "translation_id": "Jangan marah.",
+        "grade": "Sahih",
+        "explanation": "Nasihat ini mengajak kita mengambil jeda agar tidak dikendalikan oleh emosi sesaat."
+      }
+    ]
+  },
+  {
+    "topic": "sedekah",
+    "keywords": ["sedekah", "infak", "berbagi", "memberi"],
+    "quran": [
+      {
+        "surah": "Al-Baqarah",
+        "ayah": 261,
+        "arabic": "مَثَلُ الَّذِينَ يُنْفِقُونَ أَمْوَالَهُمْ فِي سَبِيلِ اللَّهِ كَمَثَلِ حَبَّةٍ أَنْبَتَتْ سَبْعَ سَنَابِلَ",
+        "transliteration": "",
+        "translation_id": "Perumpamaan orang yang menginfakkan hartanya di jalan Allah seperti sebutir biji yang menumbuhkan tujuh tangkai.",
+        "explanation": "Sedekah mengajarkan bahwa kebaikan yang diberikan karena Allah akan berkembang manfaatnya."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "amanah",
+    "keywords": ["amanah", "tanggung jawab", "kepercayaan"],
+    "quran": [
+      {
+        "surah": "An-Nisa",
+        "ayah": 58,
+        "arabic": "إِنَّ اللَّهَ يَأْمُرُكُمْ أَنْ تُؤَدُّوا الْأَمَانَاتِ إِلَىٰ أَهْلِهَا",
+        "transliteration": "",
+        "translation_id": "Sesungguhnya Allah menyuruh kamu menyampaikan amanah kepada yang berhak menerimanya.",
+        "explanation": "Amanah berarti menjaga kepercayaan, jabatan, ilmu, harta, dan peran dengan tanggung jawab."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "ikhlas",
+    "keywords": ["ikhlas", "riya", "niat", "karena allah"],
+    "quran": [
+      {
+        "surah": "Al-Bayyinah",
+        "ayah": 5,
+        "arabic": "وَمَا أُمِرُوا إِلَّا لِيَعْبُدُوا اللَّهَ مُخْلِصِينَ لَهُ الدِّينَ",
+        "transliteration": "",
+        "translation_id": "Mereka tidak diperintah kecuali agar menyembah Allah dengan mengikhlaskan ketaatan kepada-Nya.",
+        "explanation": "Ikhlas mengarahkan amal agar tidak sekadar terlihat baik, tetapi benar-benar ditujukan kepada Allah."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "niat",
+    "keywords": ["niat", "motivasi", "tujuan amal"],
+    "quran": [],
+    "hadith": [
+      {
+        "source": "HR. Bukhari dan Muslim",
+        "arabic": "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ",
+        "translation_id": "Sesungguhnya amal itu tergantung niatnya.",
+        "grade": "Sahih",
+        "explanation": "Niat adalah arah batin yang menentukan nilai sebuah amal di sisi Allah."
+      }
+    ]
+  },
+  {
+    "topic": "persaudaraan",
+    "keywords": ["saudara", "persaudaraan", "ukhuwah", "teman"],
+    "quran": [
+      {
+        "surah": "Al-Hujurat",
+        "ayah": 10,
+        "arabic": "إِنَّمَا الْمُؤْمِنُونَ إِخْوَةٌ",
+        "transliteration": "Innamal-mu'minuna ikhwatun.",
+        "translation_id": "Sesungguhnya orang-orang mukmin itu bersaudara.",
+        "explanation": "Persaudaraan iman menuntut kepedulian, perbaikan hubungan, dan tidak mudah merendahkan sesama."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "pergaulan",
+    "keywords": ["pergaulan", "teman", "lingkungan", "sosial"],
+    "quran": [
+      {
+        "surah": "Al-Hujurat",
+        "ayah": 13,
+        "arabic": "وَجَعَلْنَاكُمْ شُعُوبًا وَقَبَائِلَ لِتَعَارَفُوا",
+        "transliteration": "",
+        "translation_id": "Kami menjadikan kamu berbangsa-bangsa dan bersuku-suku agar kamu saling mengenal.",
+        "explanation": "Pergaulan dalam Islam diarahkan untuk saling mengenal, menjaga adab, dan membangun kebaikan."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "cinta Allah",
+    "keywords": ["cinta allah", "mencintai allah", "dekat allah"],
+    "quran": [
+      {
+        "surah": "Ali Imran",
+        "ayah": 31,
+        "arabic": "قُلْ إِنْ كُنْتُمْ تُحِبُّونَ اللَّهَ فَاتَّبِعُونِي يُحْبِبْكُمُ اللَّهُ",
+        "transliteration": "",
+        "translation_id": "Katakanlah, jika kamu mencintai Allah, ikutilah aku, niscaya Allah mencintaimu.",
+        "explanation": "Cinta kepada Allah dibuktikan dengan mengikuti petunjuk Rasulullah dalam iman, ibadah, dan akhlak."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "ujian hidup",
+    "keywords": ["ujian hidup", "cobaan", "masalah", "berat"],
+    "quran": [
+      {
+        "surah": "Al-Baqarah",
+        "ayah": 286,
+        "arabic": "لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا",
+        "transliteration": "La yukallifullahu nafsan illa wus'aha.",
+        "translation_id": "Allah tidak membebani seseorang melainkan sesuai dengan kesanggupannya.",
+        "explanation": "Ayat ini memberi harapan bahwa ujian tidak datang tanpa kemampuan dan pertolongan dari Allah."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "rezeki",
+    "keywords": ["rezeki", "nafkah", "kerja", "usaha"],
+    "quran": [
+      {
+        "surah": "At-Talaq",
+        "ayah": 3,
+        "arabic": "وَمَنْ يَتَوَكَّلْ عَلَى اللَّهِ فَهُوَ حَسْبُهُ",
+        "transliteration": "",
+        "translation_id": "Barang siapa bertawakal kepada Allah, niscaya Allah akan mencukupkan keperluannya.",
+        "explanation": "Rezeki diusahakan dengan ikhtiar, namun hati tetap disandarkan kepada Allah."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "memilih tontonan",
+    "keywords": ["tontonan", "film", "menonton", "konten", "hiburan"],
+    "quran": [
+      {
+        "surah": "Al-Isra",
+        "ayah": 36,
+        "arabic": "وَلَا تَقْفُ مَا لَيْسَ لَكَ بِهِ عِلْمٌ",
+        "transliteration": "",
+        "translation_id": "Janganlah kamu mengikuti sesuatu yang tidak kamu ketahui.",
+        "explanation": "Dalam memilih tontonan, ayat ini bisa menjadi prinsip kehati-hatian: sadarilah apa yang masuk ke mata, pikiran, dan hati."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "waktu",
+    "keywords": ["waktu", "masa", "produktif", "menunda"],
+    "quran": [
+      {
+        "surah": "Al-Asr",
+        "ayah": 1,
+        "arabic": "وَالْعَصْرِ",
+        "transliteration": "Wal-'asr.",
+        "translation_id": "Demi masa.",
+        "explanation": "Surah Al-Asr mengingatkan bahwa waktu adalah amanah; manusia rugi kecuali yang beriman, beramal saleh, dan saling menasihati."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "pemimpin",
+    "keywords": ["pemimpin", "kepemimpinan", "imam", "ketua"],
+    "quran": [
+      {
+        "surah": "An-Nisa",
+        "ayah": 59,
+        "arabic": "يَا أَيُّهَا الَّذِينَ آمَنُوا أَطِيعُوا اللَّهَ وَأَطِيعُوا الرَّسُولَ وَأُولِي الْأَمْرِ مِنْكُمْ",
+        "transliteration": "",
+        "translation_id": "Wahai orang-orang yang beriman, taatilah Allah, taatilah Rasul, dan ulil amri di antara kamu.",
+        "explanation": "Kepemimpinan dalam Islam terkait ketaatan kepada Allah, keadilan, musyawarah, dan tanggung jawab."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "kejujuran",
+    "keywords": ["jujur", "kejujuran", "bohong", "dusta"],
+    "quran": [
+      {
+        "surah": "At-Taubah",
+        "ayah": 119,
+        "arabic": "يَا أَيُّهَا الَّذِينَ آمَنُوا اتَّقُوا اللَّهَ وَكُونُوا مَعَ الصَّادِقِينَ",
+        "transliteration": "",
+        "translation_id": "Wahai orang-orang yang beriman, bertakwalah kepada Allah dan bersamalah kamu dengan orang-orang yang benar.",
+        "explanation": "Kejujuran menjaga iman, hubungan sosial, dan kepercayaan."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "istiqamah",
+    "keywords": ["istiqamah", "konsisten", "tetap baik", "teguh"],
+    "quran": [
+      {
+        "surah": "Fussilat",
+        "ayah": 30,
+        "arabic": "إِنَّ الَّذِينَ قَالُوا رَبُّنَا اللَّهُ ثُمَّ اسْتَقَامُوا",
+        "transliteration": "",
+        "translation_id": "Sesungguhnya orang-orang yang berkata, Tuhan kami adalah Allah, kemudian mereka istiqamah...",
+        "explanation": "Istiqamah berarti menjaga arah iman secara konsisten meski keadaan berubah."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "hijrah",
+    "keywords": ["hijrah", "berubah", "mulai baru", "meninggalkan dosa"],
+    "quran": [
+      {
+        "surah": "An-Nisa",
+        "ayah": 100,
+        "arabic": "وَمَنْ يُهَاجِرْ فِي سَبِيلِ اللَّهِ يَجِدْ فِي الْأَرْضِ مُرَاغَمًا كَثِيرًا وَسَعَةً",
+        "transliteration": "",
+        "translation_id": "Barang siapa berhijrah di jalan Allah, niscaya ia mendapatkan di bumi ini tempat hijrah yang luas dan rezeki yang banyak.",
+        "explanation": "Hijrah adalah langkah meninggalkan yang buruk menuju ketaatan dan lingkungan yang lebih baik."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "tawakal",
+    "keywords": ["tawakal", "pasrah", "berserah", "ikhtiar"],
+    "quran": [
+      {
+        "surah": "At-Talaq",
+        "ayah": 3,
+        "arabic": "وَمَنْ يَتَوَكَّلْ عَلَى اللَّهِ فَهُوَ حَسْبُهُ",
+        "transliteration": "Wa man yatawakkal 'alallahi fahuwa hasbuh.",
+        "translation_id": "Barang siapa bertawakal kepada Allah, niscaya Allah akan mencukupkan keperluannya.",
+        "explanation": "Tawakal bukan meninggalkan usaha, tetapi menyerahkan hasil kepada Allah setelah ikhtiar."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "dzikir",
+    "keywords": ["dzikir", "zikir", "mengingat allah", "hati tenang"],
+    "quran": [
+      {
+        "surah": "Ar-Ra'd",
+        "ayah": 28,
+        "arabic": "أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ",
+        "transliteration": "Ala bidzikrillahi tathma'innul-qulub.",
+        "translation_id": "Ingatlah, hanya dengan mengingat Allah hati menjadi tenteram.",
+        "explanation": "Dzikir menenangkan hati karena mengembalikan pusat perhatian kepada Allah."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "membaca Al-Qur'an",
+    "keywords": ["membaca al quran", "baca quran", "tilawah", "quran"],
+    "quran": [
+      {
+        "surah": "Al-Isra",
+        "ayah": 9,
+        "arabic": "إِنَّ هَٰذَا الْقُرْآنَ يَهْدِي لِلَّتِي هِيَ أَقْوَمُ",
+        "transliteration": "",
+        "translation_id": "Sesungguhnya Al-Qur'an ini memberi petunjuk kepada jalan yang paling lurus.",
+        "explanation": "Membaca Al-Qur'an adalah cara mencari petunjuk, bukan sekadar membaca teks."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "mencari ilmu",
+    "keywords": ["mencari ilmu", "belajar agama", "ngaji", "kuliah"],
+    "quran": [
+      {
+        "surah": "Taha",
+        "ayah": 114,
+        "arabic": "وَقُلْ رَبِّ زِدْنِي عِلْمًا",
+        "transliteration": "Wa qur rabbi zidni 'ilma.",
+        "translation_id": "Katakanlah, ya Tuhanku, tambahkanlah ilmu kepadaku.",
+        "explanation": "Doa ini menunjukkan bahwa seorang muslim selalu butuh tambahan ilmu agar hidupnya lebih terarah."
+      }
+    ],
+    "hadith": []
+  },
+  {
+    "topic": "adab",
+    "keywords": ["adab", "etika", "sopan", "menghina", "merendahkan"],
+    "quran": [
+      {
+        "surah": "Al-Hujurat",
+        "ayah": 11,
+        "arabic": "لَا يَسْخَرْ قَوْمٌ مِنْ قَوْمٍ",
+        "transliteration": "",
+        "translation_id": "Janganlah suatu kaum mengolok-olok kaum yang lain.",
+        "explanation": "Adab menjaga manusia dari sikap merendahkan, mengejek, dan merasa paling benar."
+      }
+    ],
+    "hadith": []
+  }
+]

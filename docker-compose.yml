@@ -1,0 +1,201 @@
+services:
+  frontend:
+    build:
+      context: .
+      target: frontend
+      args:
+        VITE_API_BASE_URL: ""
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - iim
+
+  api:
+    build:
+      context: .
+      target: api
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      IIM_SERVICE_NAME: api
+      RECOMMENDATION_ENGINE_URL: http://recommendation-engine:8081
+      RAG_SERVICE_URL: http://rag-service:8082
+      MODEL_REGISTRY_DIR: /app/mlops/registry
+      BACKUP_DIR: /app/backups
+      API_RATE_LIMIT_MAX: 180
+      CHAT_RATE_LIMIT_MAX: 40
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./mlops/registry:/app/mlops/registry
+      - ./backups:/app/backups
+      - ./logs:/app/logs
+    depends_on:
+      recommendation-engine:
+        condition: service_healthy
+      rag-service:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - iim
+
+  recommendation-engine:
+    build:
+      context: .
+      target: recommendation-engine
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 8081
+      IIM_SERVICE_NAME: recommendation-engine
+      MODEL_REGISTRY_DIR: /app/mlops/registry
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./data:/app/data
+      - ./mlops/registry:/app/mlops/registry
+      - ./logs:/app/logs
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8081/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - iim
+
+  rag-service:
+    build:
+      context: .
+      target: rag-service
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 8082
+      IIM_SERVICE_NAME: rag-service
+      MODEL_REGISTRY_DIR: /app/mlops/registry
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./data:/app/data
+      - ./mlops/registry:/app/mlops/registry
+      - ./logs:/app/logs
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8082/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - iim
+
+  scheduler:
+    build:
+      context: .
+      target: scheduler
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 8083
+      IIM_SERVICE_NAME: scheduler
+      MODEL_REGISTRY_DIR: /app/mlops/registry
+      BACKUP_DIR: /app/backups
+      IIM_HEALTH_TARGETS: api:http://api:8080/health,recommendation-engine:http://recommendation-engine:8081/health,rag-service:http://rag-service:8082/health
+      SCHEDULER_TZ: Asia/Jakarta
+      BACKUP_RETENTION_DAYS: 30
+    ports:
+      - "8083:8083"
+    volumes:
+      - ./data:/app/data
+      - ./mlops/registry:/app/mlops/registry
+      - ./mlops/runtime:/app/mlops/runtime
+      - ./backups:/app/backups
+      - ./logs:/app/logs
+    depends_on:
+      api:
+        condition: service_healthy
+      recommendation-engine:
+        condition: service_healthy
+      rag-service:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8083/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - iim
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      api:
+        condition: service_healthy
+      recommendation-engine:
+        condition: service_healthy
+      rag-service:
+        condition: service_healthy
+      scheduler:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - iim
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - iim
+
+networks:
+  iim:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:

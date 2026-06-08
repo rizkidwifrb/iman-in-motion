@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, MessageCircle, Mic, MicOff, PhoneCall, PhoneOff, RotateCcw, Save, Square, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { assetUrl } from '../utils/assetUrl';
+
+const aimanCharacterUrl = assetUrl('aiman-character.png');
 
 const SpeechRecognitionApi = typeof window !== 'undefined'
   ? window.SpeechRecognition || window.webkitSpeechRecognition
@@ -402,7 +405,7 @@ export default function AimanCallMode({ open, onClose, onSendVoice }) {
         {showSummary ? (
           <div className="aiman-call-summary">
             <div className="aiman-call-summary-head">
-              <img src="/aiman-character.png" alt="Karakter AIMAN" />
+              <img src={aimanCharacterUrl} alt="Karakter AIMAN" />
               <div>
                 <p className="aiman-call-eyebrow">Ringkasan Call</p>
                 <h2>Refleksi selesai</h2>
@@ -449,7 +452,7 @@ export default function AimanCallMode({ open, onClose, onSendVoice }) {
             <div className={`aiman-call-character ${isListening ? 'listening' : ''} ${isThinking ? 'thinking' : ''} ${isSpeaking ? 'speaking' : ''} ${isHandoff ? 'handoff' : ''}`}>
               <span className="aiman-call-ring one" />
               <span className="aiman-call-ring two" />
-              <img src="/aiman-character.png" alt="Karakter AIMAN" />
+              <img src={aimanCharacterUrl} alt="Karakter AIMAN" />
             </div>
 
             <div className="aiman-call-copy">

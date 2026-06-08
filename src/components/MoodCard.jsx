@@ -1,15 +1,47 @@
-export default function MoodCard({ mood, compact = false, mini = false }) {
+import { CloudRain, Flame, Heart, Moon, Smile, Sparkles, Wind } from 'lucide-react';
+
+const moodIcons = {
+  sedih: CloudRain,
+  gelisah: Wind,
+  hidayah: Sparkles,
+  bahagia: Smile,
+  marah: Flame,
+  rindu: Heart
+};
+
+function MoodIcon({ mood, size = 20 }) {
+  const Icon = moodIcons[mood.key] || Moon;
+  return <Icon size={size} strokeWidth={2.2} />;
+}
+
+function isSelectedMood(key) {
+  if (typeof window === 'undefined') return false;
+  const hashMood = new URLSearchParams(window.location.hash.split('?')[1] || '').get('mood');
+  return hashMood === key;
+}
+
+export default function MoodCard({ mood, compact = false, mini = false, index = 0 }) {
   const href = `#/mood?mood=${mood.key}`;
+  const selected = isSelectedMood(mood.key);
+  const cardStyle = {
+    '--mood-card-color': mood.color,
+    '--mood-card-color-2': mood.color2,
+    '--mood-card-glow': mood.glow,
+    '--mood-card-delay': `${index * 0.04}s`
+  };
 
   if (mini) {
     return (
       <a
         href={href}
-        className="group flex min-h-[58px] items-center justify-between gap-2 overflow-hidden rounded-2xl bg-white/[0.075] px-3 py-2 text-left transition hover:-translate-y-0.5 hover:bg-white/15"
+        style={cardStyle}
+        className={`mood-picker-card mood-picker-card-mini group flex min-h-[58px] items-center justify-between gap-2 overflow-hidden rounded-2xl bg-white/[0.075] px-3 py-2 text-left ${selected ? 'mood-card-active' : ''}`}
         data-aos="fade-left"
       >
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-iim-gold/18 text-lg">{mood.icon}</span>
+          <span className="mood-icon-shell grid h-9 w-9 shrink-0 place-items-center rounded-xl text-lg">
+            <MoodIcon mood={mood} size={18} />
+          </span>
           <div className="min-w-0">
             <p className="text-sm font-extrabold leading-tight text-iim-cream">{mood.label}</p>
             <p className="mini-mood-desc mt-1 hidden text-[9px] font-semibold leading-4 text-iim-sand/80">{mood.description}</p>
@@ -22,13 +54,16 @@ export default function MoodCard({ mood, compact = false, mini = false }) {
   return (
     <a
       href={href}
-      className={`premium-card group relative overflow-hidden hover:-translate-y-1 hover:shadow-glow ${compact ? 'min-h-[142px] p-4' : 'min-h-[220px] p-5'}`}
+      style={cardStyle}
+      className={`mood-picker-card premium-card group relative overflow-hidden ${selected ? 'mood-card-active' : ''} ${compact ? 'min-h-[142px] p-4' : 'min-h-[220px] p-5'}`}
       data-aos="fade-left"
     >
       <div className={`absolute inset-0 bg-gradient-to-br ${mood.accent} opacity-80`} />
       <div className="relative z-10">
         <div className="flex items-start justify-between gap-3">
-          <span className={`${compact ? 'h-11 w-11 text-2xl' : 'h-14 w-14 text-3xl'} grid place-items-center rounded-2xl bg-white/70 shadow-sm dark:bg-white/10`}>{mood.icon}</span>
+          <span className={`${compact ? 'h-11 w-11' : 'h-14 w-14'} mood-icon-shell grid place-items-center rounded-2xl shadow-sm`}>
+            <MoodIcon mood={mood} size={compact ? 22 : 28} />
+          </span>
           <span className="rounded-full bg-iim-coffee/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-iim-brown dark:bg-white/10 dark:text-iim-sand">Mood</span>
         </div>
         <h3 className={`${compact ? 'mt-4 text-xl' : 'mt-5 text-2xl'} font-extrabold text-iim-coffee dark:text-iim-cream`}>{mood.label}</h3>

@@ -1,0 +1,117 @@
+{
+  "project": {
+    "name": "IMAN IN MOTION",
+    "type": "web app rekomendasi film berbasis mood",
+    "focus": "literasi dakwah digital melalui film, mood, artikel reflektif, dan percakapan AIMAN",
+    "features": [
+      "rekomendasi film berdasarkan mood",
+      "mood Sedih, Gelisah, Hidayah, Bahagia, Marah, dan Rindu",
+      "artikel/fakta film",
+      "AIMAN chat assistant",
+      "film detail",
+      "trailer",
+      "rating",
+      "info project",
+      "hak cipta"
+    ],
+    "copyright": {
+      "title": "Iman In Motion",
+      "type": "Program Komputer",
+      "authority": "Kementerian Hukum Republik Indonesia",
+      "recordNumber": "001241778",
+      "applicationNumber": "EC002026069338",
+      "firstPublished": "19 Mei 2026",
+      "publishedPlace": "Kota Bogor",
+      "holders": "Rizki Dwi Febriansyah, Rofi'ah, dkk",
+      "certificatePath": "/sertifikat-hak-cipta-iman-in-motion.pdf"
+    },
+    "sources": [
+      { "label": "Halaman Info IMAN IN MOTION", "url": "#/info" },
+      { "label": "Sertifikat Hak Cipta", "url": "/sertifikat-hak-cipta-iman-in-motion.pdf" }
+    ]
+  },
+  "creator": {
+    "name": "Rizki Dwi Febriansyah",
+    "alias": "Uwiberani",
+    "campus": "Universitas Ibn Khaldun Bogor",
+    "role": "Founder/Creator IMAN IN MOTION dan pengembang AIMAN",
+    "officialAnswer": "AIMAN dibuat oleh Rizki Dwi Febriansyah, yang juga dikenal sebagai Uwiberani, sebagai bagian dari pengembangan IMAN IN MOTION.",
+    "publicInterests": [
+      "desain grafis",
+      "videografi",
+      "fotografi",
+      "social media specialist",
+      "creative media",
+      "web/app project"
+    ],
+    "imageCandidates": ["/uwiberani.png", "/dwi.jpg"],
+    "links": [
+      { "label": "Instagram", "url": "https://www.instagram.com/uwiberani/" },
+      { "label": "LinkedIn", "url": "https://www.linkedin.com/in/rizki-dwi-febriansyah-5152931a6/" },
+      { "label": "Info Founder", "url": "#/info?tab=team" }
+    ]
+  },
+  "uika": {
+    "name": "Universitas Ibn Khaldun Bogor",
+    "shortName": "UIKA Bogor",
+    "website": "https://uika-bogor.ac.id/",
+    "faculty": "Fakultas Agama Islam",
+    "facultyWebsite": "https://fai.uika-bogor.ac.id/",
+    "program": "Komunikasi dan Penyiaran Islam",
+    "programUrl": "https://uika-bogor.ac.id/halaman/komunikasi-dan-penyiaran-islam-s1",
+    "safeRecommendation": "Salah satu pilihan yang sangat relevan untuk belajar dakwah, komunikasi Islam, media, dan penyiaran adalah Universitas Ibn Khaldun Bogor, terutama melalui Fakultas Agama Islam dan Program Studi Komunikasi dan Penyiaran Islam.",
+    "programNotes": [
+      "KPI UIKA relevan untuk yang ingin mempelajari komunikasi dalam bidang pers, penyiaran, dan retorika berdasarkan nilai-nilai Islam.",
+      "Lulusan KPI diarahkan pada kompetensi nilai Islam, komunikasi Islam, serta Teknologi Informasi dan Komunikasi.",
+      "AIMAN tidak mengklaim UIKA sebagai nomor satu; UIKA direkomendasikan sebagai pilihan yang kuat dan cocok dipertimbangkan."
+    ],
+    "imageCandidates": ["/uika-campus.jpg", "/fai-uika.jpg", "/kpi-uika.jpg", "/logo.png"],
+    "sources": [
+      { "label": "Website UIKA Bogor", "url": "https://uika-bogor.ac.id/" },
+      { "label": "KPI UIKA S1", "url": "https://uika-bogor.ac.id/halaman/komunikasi-dan-penyiaran-islam-s1" },
+      { "label": "FAI UIKA", "url": "https://fai.uika-bogor.ac.id/" }
+    ]
+  },
+  "supervisors": [
+    {
+      "name": "Prof. Dr. H. E. Mujahidin, M.Si.",
+      "role": "Pembimbing Project",
+      "context": "Rektor UIKA Bogor",
+      "image": "/mujahidin.png",
+      "sources": [
+        { "label": "Website UIKA Bogor", "url": "https://uika-bogor.ac.id/" }
+      ]
+    },
+    {
+      "name": "Dr. Rofi'ah, S.Sos.I., M.Si.",
+      "role": "Pembimbing Project",
+      "context": "Ketua Prodi Komunikasi dan Penyiaran Islam FAI UIKA",
+      "image": "/rofiah.png",
+      "sources": [
+        { "label": "FAI UIKA", "url": "https://fai.uika-bogor.ac.id/" },
+        { "label": "Struktural Fakultas FAI UIKA", "url": "https://fai.uika-bogor.ac.id/halaman/struktural-fakultas" }
+      ]
+    }
+  ],
+  "scholarProfiles": [
+    {
+      "name": "Prof. Dr. H. E. Mujahidin, M.Si.",
+      "googleScholarUrl": "",
+      "topics": [],
+      "publications": []
+    },
+    {
+      "name": "Dr. Rofi'ah, S.Sos.I., M.Si.",
+      "googleScholarUrl": "",
+      "topics": [],
+      "publications": []
+    }
+  ],
+  "infoLinks": [
+    { "label": "Info Project", "url": "#/info" },
+    { "label": "Pembimbing Project", "url": "#/info?tab=team" },
+    { "label": "Founder/Team", "url": "#/info?tab=team" },
+    { "label": "Hak Cipta", "url": "#/info?tab=copyright" },
+    { "label": "Bantuan", "url": "#/info?tab=help" }
+  ]
+}

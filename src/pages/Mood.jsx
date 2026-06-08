@@ -4,6 +4,7 @@ import { MoodFilmGridSkeleton } from '../components/Skeletons';
 import { MOODS, getGenres, getMoodByKey, searchMovies } from '../services/recommendationService';
 import useMoodStats from '../hooks/useMoodStats';
 import { useLanguageCopy } from '../utils/i18n';
+import { assetUrl } from '../utils/assetUrl';
 
 function getInitialMood() {
   const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
@@ -91,7 +92,7 @@ export default function Mood() {
               {menuOpen ? '×' : '☰'}
             </button>
             <a href="#/" className="flex min-w-0 items-center gap-3">
-              <img src="/logo.png" alt="IMAN IN MOTION" className="h-11 w-11 rounded-2xl bg-white object-contain p-1" />
+              <img src={assetUrl('logo.png')} alt="IMAN IN MOTION" className="h-11 w-11 rounded-2xl bg-white object-contain p-1" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-black tracking-[0.18em] text-white">IMAN IN MOTION</p>
                 <p className="truncate text-xs font-semibold text-white/55">{ui.moodToFilm}</p>

@@ -5,6 +5,7 @@ import ArticleCard from '../components/ArticleCard';
 import { MOODS, recommendMovies } from '../services/recommendationService';
 import articles from '../data/articles';
 import { useLanguageCopy } from '../utils/i18n';
+import { assetUrl } from '../utils/assetUrl';
 
 export default function Home() {
   const featured = recommendMovies('hidayah', 6);
@@ -39,7 +40,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-br from-iim-gold/25 via-transparent to-iim-brown/20" />
           <div className="relative z-10 rounded-[1.75rem] bg-iim-charcoal p-4 text-iim-cream shadow-premium md:p-5">
             <div className="flex items-center gap-4">
-              <img src="/logo.png" alt="Logo" className="h-14 w-14 shrink-0 rounded-3xl bg-iim-cream object-contain p-1 shadow-glow" />
+              <img src={assetUrl('logo.png')} alt="Logo" className="h-14 w-14 shrink-0 rounded-3xl bg-iim-cream object-contain p-1 shadow-glow" />
               <div>
                 <p className="text-xs font-extrabold tracking-[0.24em] text-iim-gold">{t.previewBrand}</p>
                 <p className="mt-1 text-lg font-black md:text-xl">{t.moodTitle}</p>
@@ -49,7 +50,7 @@ export default function Home() {
             <div className="mt-5 rounded-3xl bg-white/5 p-3">
               <p className="mb-3 px-1 text-xs font-extrabold uppercase tracking-[0.24em] text-iim-gold">{t.moodTitle}</p>
               <div className="grid gap-2 sm:grid-cols-2">
-                {MOODS.map((mood) => <MoodCard key={mood.key} mood={mood} mini />)}
+                {MOODS.map((mood, index) => <MoodCard key={mood.key} mood={mood} mini index={index} />)}
               </div>
             </div>
 
@@ -82,7 +83,7 @@ export default function Home() {
       <section className="container-page py-10" data-scroll-reveal>
         <SectionTitle eyebrow={t.moodEyebrow} title={t.moodSectionTitle} description={t.moodSectionDesc} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {MOODS.map((mood) => <MoodCard key={mood.key} mood={mood} compact />)}
+          {MOODS.map((mood, index) => <MoodCard key={mood.key} mood={mood} compact index={index} />)}
         </div>
       </section>
 

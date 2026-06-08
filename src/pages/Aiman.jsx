@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PhoneCall, Send } from 'lucide-react';
+import { Copy, ExternalLink, PhoneCall, Send } from 'lucide-react';
 import { sendAimanMessage } from '../services/api';
 import AimanCallMode from '../components/AimanCallMode';
+import { assetUrl } from '../utils/assetUrl';
 
 function readParams() {
   return new URLSearchParams(window.location.hash.split('?')[1] || '');
@@ -22,7 +23,7 @@ function formatContent(text = '') {
   const cleaned = cleanReply(text);
   return cleaned.split('\n').filter(Boolean).map((line, index) => {
     const simple = line.replace(/\*\*/g, '').trim();
-    const isHeading = /^(Dalil yang nyambung|Ayat Arab \/ Hadits Arab|Arti|Penjelasan singkat|Pemahaman dakwah|Langkah kecil|Penguat hadits)$/i.test(simple);
+    const isHeading = /^(Dalil yang nyambung|Dalil Al-Qur'an|Ayat Arab \/ Hadits Arab|Hadis terkait|Arti|Sumber|Status|Maknanya|Penjelasan singkat|Pemahaman dakwah|Langkah kecil|Penguat hadits)$/i.test(simple);
     const arabic = looksArabic(simple);
     return (
       <p
@@ -36,7 +37,95 @@ function formatContent(text = '') {
   });
 }
 
-const characterAvatar = '/aiman-character.png';
+function resolveAssetPath(value = '') {
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value) || value.startsWith('#')) return value;
+  return assetUrl(value.replace(/^\/+/, ''));
+}
+
+function initials(value = '') {
+  return String(value || 'AIMAN')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join('') || 'AI';
+}
+
+function copyToClipboard(text = '') {
+  if (!text) return;
+  navigator.clipboard?.writeText(text).catch(() => {});
+}
+
+function AimanMetaCard({ card }) {
+  const image = resolveAssetPath(card.image || '');
+  return (
+    <article className="aiman-meta-card">
+      {image ? (
+        <img src={image} alt={card.title || 'AIMAN card'} className="aiman-meta-image" loading="lazy" />
+      ) : (
+        <div className="aiman-meta-fallback">{initials(card.title)}</div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="aiman-meta-type">{card.type || 'Info'}</p>
+        <h3>{card.title}</h3>
+        {card.subtitle && <p className="aiman-meta-subtitle">{card.subtitle}</p>}
+        {card.description && <p className="aiman-meta-desc">{card.description}</p>}
+        {card.links?.length ? (
+          <div className="aiman-meta-links">
+            {card.links.map((link) => (
+              <a key={`${card.title}-${link.label}`} href={resolveAssetPath(link.url)} target={link.url?.startsWith('http') ? '_blank' : undefined} rel={link.url?.startsWith('http') ? 'noopener noreferrer' : undefined}>
+                {link.label}
+                <ExternalLink size={12} />
+              </a>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function DalilCard({ card }) {
+  const copyText = [card.title, card.arabic, card.transliteration, card.translation, card.source, card.grade, card.explanation].filter(Boolean).join('\n');
+  return (
+    <article className={`aiman-dalil-card ${card.type === 'hadith' ? 'hadith' : 'quran'}`}>
+      <div className="aiman-dalil-head">
+        <div>
+          <p>{card.label || (card.type === 'hadith' ? 'Hadis' : "Al-Qur'an")}</p>
+          <h3>{card.title || card.source}</h3>
+        </div>
+        <button type="button" onClick={() => copyToClipboard(copyText)} aria-label="Salin dalil">
+          <Copy size={14} />
+        </button>
+      </div>
+      {card.arabic && <p className="aiman-dalil-arabic" dir="rtl">{card.arabic}</p>}
+      {card.transliteration && <p className="aiman-dalil-translit">{card.transliteration}</p>}
+      {card.translation && <p className="aiman-dalil-translation">{card.translation}</p>}
+      <div className="aiman-dalil-foot">
+        {card.source && <span>Sumber: {card.source}</span>}
+        {card.grade && <span>Status: {card.grade}</span>}
+      </div>
+      {card.explanation && <p className="aiman-dalil-explanation">{card.explanation}</p>}
+    </article>
+  );
+}
+
+function SourceLinks({ sources = [] }) {
+  if (!sources.length) return null;
+  return (
+    <div className="aiman-source-links">
+      <span>Sumber:</span>
+      {sources.map((source) => (
+        <a key={`${source.label}-${source.url}`} href={resolveAssetPath(source.url)} target={source.url?.startsWith('http') ? '_blank' : undefined} rel={source.url?.startsWith('http') ? 'noopener noreferrer' : undefined}>
+          {source.label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+const characterAvatar = assetUrl('aiman-character.png');
 const defaultIntro = 'Assalamualaikum. Aku AIMAN. Ceritain aja pelan-pelan kondisi hati kamu. Kalau kamu minta dalil, aku usahakan kasih ayat atau hadits Arab, artinya, lalu penjelasan dan pemahaman dakwahnya dengan bahasa yang mudah dipahami.';
 const defaultFollowUp = 'Hai! Apa yang sedang terjadi dalam hati kamu? Kamu ingin berbicara tentang sesuatu?';
 
@@ -94,8 +183,17 @@ export default function Aiman() {
       const data = await sendAimanMessage(clean, next.slice(-8), voiceMode ? { mode: 'voice' } : {});
       const reply = data.reply || data.answer || data.text || 'Aku dengerin. Coba ceritain sedikit lagi biar aku bisa nangkep konteksnya.';
       const cleanText = cleanReply(reply);
-      setMessages((current) => [...current, { role: 'assistant', content: cleanText, films: data.films || [], mood: data.mood }]);
-      return { reply: cleanText, mood: data.mood, films: data.films || [], rag: data.rag || [] };
+      setMessages((current) => [...current, {
+        role: 'assistant',
+        content: cleanText,
+        films: data.films || [],
+        mood: data.mood,
+        cards: data.cards || [],
+        dalilCards: data.dalilCards || [],
+        sources: data.sources || [],
+        intent: data.intent || ''
+      }]);
+      return { reply: cleanText, mood: data.mood, films: data.films || [], rag: data.rag || [], cards: data.cards || [], dalilCards: data.dalilCards || [] };
     } catch (error) {
       const errorText = error.message || 'AIMAN belum bisa terhubung. Pastikan backend sudah jalan dengan npm start dan GROQ_API_KEY sudah ada di .env.';
       setMessages((current) => [...current, { role: 'assistant', content: errorText }]);
@@ -120,10 +218,10 @@ export default function Aiman() {
   }
 
   const quickPrompts = [
-    'Aku lagi gelisah dan overthinking.',
-    'Aku lagi sedih, butuh film yang nenangin.',
-    'Aku pengen berubah tapi bingung mulai dari mana.',
-    'Kasih aku dalil tentang hati yang gelisah lengkap arab dan artinya.'
+    'Aiman, kampus Islam yang bagus buat belajar dakwah di mana?',
+    'Aiman, siapa yang buat kamu?',
+    'Siapa dosen pembimbing project ini?',
+    'Kasih aku dalil tentang sabar lengkap arab dan artinya.'
   ];
 
   return (
@@ -199,6 +297,21 @@ export default function Aiman() {
                 )}
                 <div className="aiman-bubble">
                   <div className="text-sm leading-7 md:text-[15px]">{formatContent(message.content)}</div>
+                  {message.dalilCards?.length ? (
+                    <div className="aiman-dalil-grid">
+                      {message.dalilCards.map((card, cardIndex) => (
+                        <DalilCard key={`${card.title || card.source}-${cardIndex}`} card={card} />
+                      ))}
+                    </div>
+                  ) : null}
+                  {message.cards?.length ? (
+                    <div className="aiman-meta-grid">
+                      {message.cards.map((card, cardIndex) => (
+                        <AimanMetaCard key={`${card.title}-${cardIndex}`} card={card} />
+                      ))}
+                    </div>
+                  ) : null}
+                  <SourceLinks sources={message.sources || []} />
                   {message.films?.length ? (
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
                       {message.films.slice(0, 2).map((filmItem) => (

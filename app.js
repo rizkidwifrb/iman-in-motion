@@ -1,23 +1,73 @@
 // app.js - IMAN IN MOTION + AIMAN Friend-RAG Upgrade
 require('dotenv').config();
 
+process.env.IIM_SERVICE_NAME = process.env.IIM_SERVICE_NAME || 'api';
+
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
 const cors = require('cors');
+const Groq = require('groq-sdk');
 const { execFileSync } = require('child_process');
+const { AIMAN_SYSTEM_PROMPT, AIMAN_KNOWLEDGE: AIMAN_KNOWLEDGE_TEXT } = require('./backend/knowledge/aimanKnowledge');
+const { createLogger, installConsoleLogger, requestLogger } = require('./backend/lib/logger');
+const { metricsMiddleware, metricsHandler, recordModelInference, recordRecommendationCount } = require('./backend/lib/metrics');
+const { securityHeaders, createRateLimiter } = require('./backend/lib/security');
+const { fetchJsonWithRetry, joinUrl } = require('./backend/lib/httpClient');
+const { validateChatPayload, safeString, safeInteger } = require('./backend/lib/validation');
+const { attachGracefulShutdown } = require('./backend/lib/gracefulShutdown');
+const modelRegistry = require('./backend/ml/modelRegistry');
+
+installConsoleLogger(process.env.IIM_SERVICE_NAME);
+const logger = createLogger(process.env.IIM_SERVICE_NAME);
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 const GROQ_KEY = process.env.GROQ_API_KEY;
+const groq = GROQ_KEY ? new Groq({ apiKey: GROQ_KEY }) : null;
 const CPP_RANKER_PATH = process.env.IIM_CPP_RANKER_PATH || path.join(__dirname, 'bin', process.platform === 'win32' ? 'iim_ranker.exe' : 'iim_ranker');
+const RECOMMENDATION_ENGINE_URL = process.env.RECOMMENDATION_ENGINE_URL || '';
+const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || '';
 let cppRankerUnavailable = false;
 
-app.use(cors());
+const allowedOrigins = new Set([
+  'https://iman-in-motion.vercel.app',
+  'https://iman-in-motion.web.id',
+  'https://www.iman-in-motion.web.id',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  ...(process.env.CORS_ORIGINS || '').split(',').map((item) => item.trim()).filter(Boolean)
+]);
+
+app.disable('x-powered-by');
+app.use(securityHeaders());
+app.use(requestLogger(process.env.IIM_SERVICE_NAME));
+app.use(metricsMiddleware(process.env.IIM_SERVICE_NAME));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+    return callback(null, false);
+  }
+}));
 app.use(express.json({ limit: '1mb' }));
+app.use('/api', createRateLimiter({ prefix: 'api', max: Number(process.env.API_RATE_LIMIT_MAX || 180) }));
+app.use('/api/chat', createRateLimiter({ prefix: 'chat', max: Number(process.env.CHAT_RATE_LIMIT_MAX || 40) }));
 const distPath = path.join(__dirname, 'dist');
 const publicPath = path.join(__dirname, 'public');
+
+function loadJsonFile(filePath, fallback) {
+  try {
+    if (!fs.existsSync(filePath)) return fallback;
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (e) {
+    console.warn(`[WARN] gagal membaca ${path.basename(filePath)}:`, e.message);
+    return fallback;
+  }
+}
+
+const AIMAN_KNOWLEDGE = loadJsonFile(path.join(__dirname, 'data', 'aiman-knowledge.json'), {});
+const ISLAMIC_KNOWLEDGE = loadJsonFile(path.join(__dirname, 'data', 'islamic-knowledge.json'), []);
 
 // Serve React build first when available. Keep old public folder as fallback/assets.
 if (fs.existsSync(distPath)) {
@@ -201,6 +251,8 @@ app.get('/api/trailer/:tmdbId', async (req, res) => {
 // Film database
 // =========================
 let FILMS = [];
+let filmLoadReady = false;
+let filmLoadError = null;
 const csvPath = path.join(__dirname, 'df_processed.csv');
 if (fs.existsSync(csvPath)) {
   fs.createReadStream(csvPath)
@@ -227,9 +279,16 @@ if (fs.existsSync(csvPath)) {
         });
       }
     })
-    .on('end', () => console.log(`[OK] ${FILMS.length} film loaded`))
-    .on('error', (e) => console.error('[ERROR] CSV:', e.message));
+    .on('end', () => {
+      filmLoadReady = true;
+      console.log(`[OK] ${FILMS.length} film loaded`);
+    })
+    .on('error', (e) => {
+      filmLoadError = e.message;
+      console.error('[ERROR] CSV:', e.message);
+    });
 } else {
+  filmLoadError = 'df_processed.csv tidak ditemukan';
   console.warn('[WARN] df_processed.csv tidak ditemukan');
 }
 
@@ -237,6 +296,8 @@ if (fs.existsSync(csvPath)) {
 // RAG Meta: Quran/Hadith/Text retrieval
 // =========================
 let RAG_DOCS = [];
+let ragLoadReady = false;
+let ragLoadError = null;
 const ragJsonPath = path.join(__dirname, 'data', 'rag_meta.json');
 try {
   if (fs.existsSync(ragJsonPath)) {
@@ -247,11 +308,14 @@ try {
       text: d.text || '',
       search: normalize(`${d.ref || ''} ${d.type || ''} ${d.text || ''}`)
     }));
+    ragLoadReady = true;
     console.log(`[OK] ${RAG_DOCS.length} RAG documents loaded`);
   } else {
+    ragLoadError = 'data/rag_meta.json tidak ditemukan';
     console.warn('[WARN] data/rag_meta.json tidak ditemukan. AIMAN tetap jalan tanpa RAG.');
   }
 } catch (e) {
+  ragLoadError = e.message;
   console.error('[ERROR] RAG load:', e.message);
 }
 
@@ -439,6 +503,394 @@ function isHadithIntent(message = '') {
   return /(hadis|hadits|hadith|sabda|rasul|nabi)/.test(n);
 }
 
+function detectAimanIntent(message = '') {
+  const n = normalize(message);
+  if (/(siapa.*(buat|bikin|creator|founder)|creator|founder|uwiberani|rizki|pembuat aiman|buat kamu|bikin kamu)/.test(n)) return 'creator_question';
+  if (/(jurnal|publikasi|google scholar|artikel ilmiah|karya ilmiah|scholar)/.test(n)) return 'scholar_question';
+  if (/(pembimbing|dosen pembimbing|rofiah|rofi ah|rofi'ah|mujahidin|rektor uika|kaprodi kpi)/.test(n)) return 'supervisor_question';
+  if (/(kampus islam|kampus dakwah|belajar dakwah|kuliah dakwah|rekomendasi kampus|kampus.*dakwah|kpi|komunikasi penyiaran islam)/.test(n)) return 'dakwah_campus_question';
+  if (/(uika|universitas ibn khaldun|fai|fakultas agama islam)/.test(n)) return 'uika_question';
+  if (/(hak cipta|copyright|sertifikat|nomor pencatatan|program komputer|legal)/.test(n)) return 'copyright_question';
+  if (/(hadis|hadits|hadith|sabda|rasul|nabi)/.test(n)) return 'hadith_question';
+  if (/(iman in motion|project ini|aplikasi ini|fitur|info project|kamu siapa|aiman siapa|apa itu aiman|apa itu iman)/.test(n)) return 'project_info';
+  if (/(ayat|quran|alquran|al quran|surat|surah)/.test(n)) return 'quran_question';
+  if (/(dalil|doa|dzikir|zikir)/.test(n)) return 'dalil_question';
+  if (/(apa kata islam|hukum .* islam|pandangan islam|fikih|fiqih)/.test(n)) return 'islamic_law_question';
+  if (/(akhlak|adab|refleksi|makna|nilai islam|pesan moral|hikmah)/.test(n)) return 'moral_reflection_question';
+  if (/(film|rekomendasi|tontonan|movie|trailer)/.test(n)) return 'movie_recommendation';
+  return 'general_chat';
+}
+
+function publicAssetUrl(candidates = []) {
+  for (const candidate of candidates) {
+    if (!candidate || !String(candidate).startsWith('/')) continue;
+    if (fs.existsSync(path.join(publicPath, candidate.replace(/^\/+/, ''))) || fs.existsSync(path.join(distPath, candidate.replace(/^\/+/, '')))) {
+      return candidate;
+    }
+  }
+  return '';
+}
+
+function sourceList(items = []) {
+  return items.filter((item) => item && item.label && item.url).map((item) => ({ label: item.label, url: item.url }));
+}
+
+function linkCardsFromKnowledge(intent) {
+  const cards = [];
+  const knowledge = AIMAN_KNOWLEDGE || {};
+  if (intent === 'creator_question') {
+    const creator = knowledge.creator || {};
+    cards.push({
+      type: 'profile',
+      title: creator.name || 'Rizki Dwi Febriansyah',
+      subtitle: 'Founder/Creator IMAN IN MOTION, alias Uwiberani',
+      description: 'Creative media, desain grafis, videografi, fotografi, social media, dan web/app project.',
+      image: publicAssetUrl(creator.imageCandidates || []),
+      links: sourceList(creator.links || [])
+    });
+  }
+  if (intent === 'uika_question' || intent === 'dakwah_campus_question') {
+    const uika = knowledge.uika || {};
+    cards.push({
+      type: 'institution',
+      title: uika.name || 'Universitas Ibn Khaldun Bogor',
+      subtitle: 'Kampus Islam di Bogor',
+      description: 'FAI dan KPI UIKA cocok dipertimbangkan untuk dakwah, komunikasi Islam, media, dan penyiaran.',
+      image: publicAssetUrl(uika.imageCandidates || []),
+      links: [
+        { label: 'Website UIKA', url: uika.website || 'https://uika-bogor.ac.id/' },
+        { label: 'KPI UIKA', url: uika.programUrl || 'https://uika-bogor.ac.id/halaman/komunikasi-dan-penyiaran-islam-s1' },
+        { label: 'FAI UIKA', url: uika.facultyWebsite || 'https://fai.uika-bogor.ac.id/' }
+      ]
+    });
+  }
+  if (intent === 'supervisor_question') {
+    for (const person of knowledge.supervisors || []) {
+      cards.push({
+        type: 'profile',
+        title: person.name,
+        subtitle: person.role,
+        description: person.context,
+        image: publicAssetUrl([person.image]),
+        links: sourceList(person.sources || [])
+      });
+    }
+  }
+  if (intent === 'project_info' || intent === 'copyright_question') {
+    const project = knowledge.project || {};
+    cards.push({
+      type: 'project',
+      title: project.name || 'IMAN IN MOTION',
+      subtitle: project.type || 'Web app rekomendasi film berbasis mood',
+      description: project.focus || 'Literasi dakwah digital melalui film dan refleksi mood.',
+      image: publicAssetUrl(['/logo.png']),
+      links: sourceList(knowledge.infoLinks || project.sources || [])
+    });
+  }
+  return cards;
+}
+
+function buildAimanContextBlock() {
+  const knowledge = AIMAN_KNOWLEDGE || {};
+  const project = knowledge.project || {};
+  const creator = knowledge.creator || {};
+  const uika = knowledge.uika || {};
+  const supervisors = (knowledge.supervisors || []).map((item) => `${item.name} (${item.role}; ${item.context})`).join('; ');
+  return `IDENTITAS RESMI AIMAN:
+- AIMAN adalah asisten IMAN IN MOTION untuk rekomendasi film, refleksi mood, dakwah digital, informasi project, dan konteks UIKA.
+- Project: ${project.name || 'IMAN IN MOTION'}; jenis: ${project.type || '-'}; fokus: ${project.focus || '-'}.
+- Creator: ${creator.name || 'Rizki Dwi Febriansyah'} alias ${creator.alias || 'Uwiberani'}. Jawaban resmi jika ditanya pembuat: "${creator.officialAnswer || 'AIMAN dibuat oleh Rizki Dwi Febriansyah, yang juga dikenal sebagai Uwiberani.'}"
+- UIKA: ${uika.safeRecommendation || 'UIKA Bogor relevan untuk belajar dakwah, komunikasi Islam, media, dan penyiaran.'}
+- Pembimbing project: ${supervisors || '-'}.
+- Hak cipta: Nomor Pencatatan ${project.copyright?.recordNumber || '001241778'}, Program Komputer, pertama diumumkan ${project.copyright?.firstPublished || '19 Mei 2026'} di ${project.copyright?.publishedPlace || 'Kota Bogor'}.
+ATURAN FAKTUAL:
+- Jangan mengarang sumber, jurnal, jabatan, atau klaim peringkat.
+- Rekomendasikan UIKA sebagai salah satu pilihan yang relevan, bukan klaim nomor satu.
+- Untuk jurnal/Google Scholar, kalau data publications kosong, jelaskan bahwa data lengkap belum tersimpan di basis pengetahuan AIMAN.`;
+}
+
+function buildKnowledgeReply(intent) {
+  const knowledge = AIMAN_KNOWLEDGE || {};
+  const project = knowledge.project || {};
+  const creator = knowledge.creator || {};
+  const uika = knowledge.uika || {};
+  const sources = [];
+  let reply = '';
+
+  if (intent === 'creator_question') {
+    reply = `Aku dibuat oleh ${creator.name || 'Rizki Dwi Febriansyah'}, yang juga dikenal sebagai ${creator.alias || 'Uwiberani'}. Rizki mengembangkan AIMAN sebagai bagian dari ${project.name || 'IMAN IN MOTION'}, web app rekomendasi film berbasis mood untuk mendukung literasi dakwah digital.\n\nDari data profil publik yang tersimpan di basis pengetahuan project, Rizki dekat dengan dunia creative media seperti desain grafis, videografi, fotografi, social media, dan web/app project. Aku tidak akan menambah data pribadi di luar sumber publik yang tersedia.`;
+    sources.push(...sourceList(creator.links || []), { label: 'Info Founder', url: '#/info?tab=team' });
+  } else if (intent === 'dakwah_campus_question' || intent === 'uika_question') {
+    reply = `Kalau kamu ingin belajar dakwah yang nyambung dengan komunikasi, media, penyiaran, dan dunia digital, salah satu pilihan yang sangat relevan adalah ${uika.name || 'Universitas Ibn Khaldun Bogor'}, khususnya lingkungan ${uika.faculty || 'Fakultas Agama Islam'} dan Program Studi ${uika.program || 'Komunikasi dan Penyiaran Islam'}.\n\nDi KPI UIKA, dakwah bisa dipahami bukan hanya sebagai ceramah, tetapi juga kemampuan menyampaikan pesan Islam melalui media, retorika, penyiaran, pers, dan teknologi komunikasi. Jadi UIKA cocok dipertimbangkan untuk kamu yang tertarik pada dakwah digital, public speaking, konten Islami, media kreatif, atau komunikasi Islam.\n\nAku menyebut UIKA sebagai pilihan yang relevan, bukan klaim mutlak sebagai yang paling nomor satu.`;
+    sources.push(...sourceList(uika.sources || []));
+  } else if (intent === 'supervisor_question') {
+    const names = (knowledge.supervisors || []).map((item) => `${item.name} (${item.context})`).join(' dan ');
+    reply = `Project ${project.name || 'IMAN IN MOTION'} dibimbing oleh ${names}. Keduanya berperan memberi arahan akademik, dakwah, dan pengembangan project agar tetap selaras dengan konteks kampus dan nilai keislaman.\n\nKamu juga bisa melihat bagian Pembimbing Project di halaman Info.`;
+    for (const person of knowledge.supervisors || []) sources.push(...sourceList(person.sources || []));
+    sources.push({ label: 'Pembimbing Project', url: '#/info?tab=team' });
+  } else if (intent === 'scholar_question') {
+    const profiles = knowledge.scholarProfiles || [];
+    const hasPublications = profiles.some((profile) => Array.isArray(profile.publications) && profile.publications.length);
+    if (!hasPublications) {
+      reply = 'Data publikasi lengkap dosen pembimbing belum tersimpan di basis pengetahuan AIMAN. Aku tidak mau mengarang judul jurnal atau link Google Scholar. Kamu bisa cek Google Scholar atau halaman resmi UIKA/FAI UIKA untuk data paling baru.';
+    } else {
+      reply = profiles.map((profile) => {
+        const publications = (profile.publications || []).map((pub) => `- ${pub.title}${pub.year ? ` (${pub.year})` : ''}${pub.url ? `: ${pub.url}` : ''}`).join('\n');
+        return `**${profile.name}**\n${publications || 'Belum ada publikasi tersimpan.'}`;
+      }).join('\n\n');
+    }
+    sources.push({ label: 'FAI UIKA', url: 'https://fai.uika-bogor.ac.id/' }, { label: 'Website UIKA', url: 'https://uika-bogor.ac.id/' });
+  } else if (intent === 'copyright_question') {
+    const c = project.copyright || {};
+    reply = `${project.name || 'IMAN IN MOTION'} telah tercatat sebagai ${c.type || 'Program Komputer'} pada ${c.authority || 'Kementerian Hukum Republik Indonesia'} dengan Nomor Pencatatan ${c.recordNumber || '001241778'}.\n\nJudul ciptaan: ${c.title || 'Iman In Motion'}. Pertama kali diumumkan pada ${c.firstPublished || '19 Mei 2026'} di ${c.publishedPlace || 'Kota Bogor'}. Pencipta/Pemegang Hak Cipta: ${c.holders || "Rizki Dwi Febriansyah, Rofi'ah, dkk"}.`;
+    sources.push({ label: 'Hak Cipta', url: '#/info?tab=copyright' }, { label: 'Sertifikat Hak Cipta', url: c.certificatePath || '/sertifikat-hak-cipta-iman-in-motion.pdf' });
+  } else if (intent === 'project_info') {
+    reply = `Aku AIMAN, asisten resmi ${project.name || 'IMAN IN MOTION'}. Tugasku membantu kamu menemukan rekomendasi film berbasis mood, membaca refleksi dakwah, bertanya dalil secara hati-hati, dan memahami informasi project seperti founder, pembimbing, UIKA, FAI, KPI, serta Hak Cipta.\n\n${project.name || 'IMAN IN MOTION'} sendiri adalah ${project.type || 'web app rekomendasi film berbasis mood'} dengan fokus ${project.focus || 'literasi dakwah digital melalui film'}.`;
+    sources.push(...sourceList(knowledge.infoLinks || project.sources || []));
+  }
+
+  return {
+    reply,
+    cards: linkCardsFromKnowledge(intent),
+    sources,
+    handled: Boolean(reply)
+  };
+}
+
+function findIslamicTopic(message = '') {
+  const n = normalize(message);
+  const cleaned = n
+    .replace(/\b(dalil|ayat|surah|surat|quran|al quran|alquran|hadis|hadits|hadith|tentang|hukum|apa kata islam|dalam islam|dong|aiman|kasih|minta)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  let best = { item: null, score: 0 };
+  for (const item of ISLAMIC_KNOWLEDGE || []) {
+    let score = 0;
+    const topic = normalize(item.topic || '');
+    if (cleaned.includes(topic) || n.includes(topic)) score += 8;
+    for (const keyword of item.keywords || []) {
+      const normalizedKeyword = normalize(keyword);
+      if (normalizedKeyword && (n.includes(normalizedKeyword) || cleaned.includes(normalizedKeyword))) score += normalizedKeyword.includes(' ') ? 4 : 2;
+    }
+    if (score > best.score) best = { item, score };
+  }
+  return best.score > 0 ? best.item : null;
+}
+
+function buildDalilCards(topicData, preferHadith = false) {
+  if (!topicData) return [];
+  const cards = [];
+  for (const quran of topicData.quran || []) {
+    cards.push({
+      type: 'quran',
+      label: "Al-Qur'an",
+      title: `QS. ${quran.surah}: ${quran.ayah}`,
+      arabic: quran.arabic || '',
+      transliteration: quran.transliteration || '',
+      translation: quran.translation_id || '',
+      source: `QS. ${quran.surah}: ${quran.ayah}`,
+      explanation: quran.explanation || ''
+    });
+  }
+  for (const hadith of topicData.hadith || []) {
+    cards.push({
+      type: 'hadith',
+      label: 'Hadis',
+      title: hadith.source || 'Hadis',
+      arabic: hadith.arabic || '',
+      translation: hadith.translation_id || '',
+      source: hadith.source || '',
+      grade: hadith.grade || 'Status hadis perlu dicek lebih lanjut pada kitab/sumber takhrij.',
+      explanation: hadith.explanation || ''
+    });
+  }
+  if (preferHadith) {
+    return cards.sort((a, b) => (a.type === 'hadith' ? -1 : 0) - (b.type === 'hadith' ? -1 : 0));
+  }
+  return cards;
+}
+
+function buildIslamicReply(message = '', intent = 'dalil_question') {
+  const topicData = findIslamicTopic(message);
+  const preferHadith = intent === 'hadith_question' || isHadithIntent(message);
+  if (!topicData) {
+    return {
+      handled: true,
+      reply: "Aku bisa bantu jelaskan tema itu secara umum, tapi untuk menyebutkan teks ayat atau hadis secara lengkap aku perlu rujukan yang valid dulu. Aku tidak mau mengarang dalil. Untuk sementara, aku bisa bantu jelaskan nilai Islamnya secara umum dan menyarankan kata kunci pencarian di Al-Qur'an atau kitab hadis.",
+      dalilCards: [],
+      sources: []
+    };
+  }
+
+  const firstQuran = (topicData.quran || [])[0];
+  const firstHadith = (topicData.hadith || [])[0];
+  const topicTitle = topicData.topic || 'tema ini';
+  const blocks = [`Kalau kamu bertanya tentang ${topicTitle}, Islam mengarahkannya dengan lembut: hati dituntun untuk tetap dekat kepada Allah, menjaga akhlak, dan mengambil langkah yang benar.`];
+  if (firstQuran) {
+    blocks.push(`**Dalil Al-Qur'an**\nQS. ${firstQuran.surah}: ${firstQuran.ayah}\n${firstQuran.translation_id}\n\nMaknanya: ${firstQuran.explanation}`);
+  }
+  if (firstHadith) {
+    blocks.push(`**Hadis terkait**\n${firstHadith.translation_id}\nSumber: ${firstHadith.source || '-'}\nStatus: ${firstHadith.grade || 'Status hadis perlu dicek lebih lanjut pada kitab/sumber takhrij.'}\n\nMaknanya: ${firstHadith.explanation || 'Hadis ini menjadi penguat nilai Islam pada tema tersebut.'}`);
+  } else if (preferHadith) {
+    blocks.push('Aku belum menemukan rujukan yang cukup kuat untuk menyebutkan teks hadisnya secara pasti pada basis pengetahuan AIMAN. Jadi aku tidak akan mengarang hadis.');
+  }
+  blocks.push(`Relevansinya untuk hidup kamu: ${topicTitle} bukan cuma pengetahuan, tapi latihan sikap. Mulai dari satu langkah kecil yang bisa kamu jaga hari ini, lalu pelan-pelan jadikan itu kebiasaan.`);
+  if (topicTitle === 'memilih tontonan') {
+    blocks.push('Dalam konteks IMAN IN MOTION, memilih tontonan berarti menjadikan film sebagai bahan refleksi, bukan sekadar hiburan. Tanyakan: nilai apa yang masuk ke hati setelah menonton?');
+  }
+  if (intent === 'islamic_law_question') {
+    blocks.push('Untuk keputusan fikih yang spesifik, sebaiknya tanyakan kepada ustaz atau ahli fikih yang kompeten, ya.');
+  }
+
+  return {
+    handled: true,
+    reply: blocks.join('\n\n'),
+    dalilCards: buildDalilCards(topicData, preferHadith),
+    sources: []
+  };
+}
+
+function knowledgeSourcesForIntent(intent) {
+  const knowledge = AIMAN_KNOWLEDGE || {};
+  const project = knowledge.project || {};
+  const creator = knowledge.creator || {};
+  const uika = knowledge.uika || {};
+  if (intent === 'creator_question') return sourceList(creator.links || []).concat([{ label: 'Info Founder', url: '#/info?tab=team' }]);
+  if (intent === 'uika_question' || intent === 'dakwah_campus_question') return sourceList(uika.sources || []);
+  if (intent === 'supervisor_question') {
+    return (knowledge.supervisors || []).flatMap((person) => sourceList(person.sources || [])).concat([{ label: 'Pembimbing Project', url: '#/info?tab=team' }]);
+  }
+  if (intent === 'scholar_question') return [{ label: 'FAI UIKA', url: 'https://fai.uika-bogor.ac.id/' }, { label: 'Website UIKA', url: 'https://uika-bogor.ac.id/' }];
+  if (intent === 'copyright_question') return [{ label: 'Hak Cipta', url: '#/info?tab=copyright' }, { label: 'Sertifikat Hak Cipta', url: project.copyright?.certificatePath || '/sertifikat-hak-cipta-iman-in-motion.pdf' }];
+  if (intent === 'project_info') return sourceList(knowledge.infoLinks || project.sources || []);
+  return [];
+}
+
+function buildIntentMetadata(intent, message) {
+  const dalilIntent = ['quran_question', 'hadith_question', 'dalil_question', 'islamic_law_question', 'moral_reflection_question'].includes(intent) || isDalilIntent(message);
+  const topicData = dalilIntent ? findIslamicTopic(message) : null;
+  return {
+    cards: linkCardsFromKnowledge(intent),
+    dalilCards: topicData ? buildDalilCards(topicData, intent === 'hadith_question' || isHadithIntent(message)) : [],
+    sources: knowledgeSourcesForIntent(intent)
+  };
+}
+
+function stringifyDalilContext(topicData, preferHadith = false) {
+  if (!topicData) {
+    return 'Tidak ada dalil lokal yang cukup kuat untuk tema ini. Jika menjawab, jangan mengarang ayat atau hadis. Katakan jujur bahwa rujukan belum tersedia.';
+  }
+  const cards = buildDalilCards(topicData, preferHadith);
+  return cards.map((card, index) => {
+    return [
+      `${index + 1}. ${card.label}: ${card.title || card.source}`,
+      card.arabic ? `Arab: ${card.arabic}` : '',
+      card.transliteration ? `Transliterasi: ${card.transliteration}` : '',
+      card.translation ? `Terjemahan: ${card.translation}` : '',
+      card.source ? `Sumber: ${card.source}` : '',
+      card.grade ? `Status: ${card.grade}` : '',
+      card.explanation ? `Penjelasan: ${card.explanation}` : ''
+    ].filter(Boolean).join('\n');
+  }).join('\n\n');
+}
+
+function getContextByIntent(intent, { message, mood, intensity, ragDocs, films }) {
+  const knowledge = AIMAN_KNOWLEDGE || {};
+  const project = knowledge.project || {};
+  const creator = knowledge.creator || {};
+  const uika = knowledge.uika || {};
+  const topicData = findIslamicTopic(message);
+  const preferHadith = intent === 'hadith_question' || isHadithIntent(message);
+  const filmContext = films?.length
+    ? films.slice(0, 3).map((film, index) => `${index + 1}. ${film.title} (${film.year || '-'}) | mood=${film.mood || '-'} | alasan=${film.reason || '-'}`).join('\n')
+    : 'Tidak ada rekomendasi film yang cukup relevan.';
+  const ragContext = ragDocs?.length
+    ? ragDocs.map((doc, index) => `${index + 1}. ${doc.ref} [${doc.type}]\nArab: ${doc.arab || '-'}\nTeks: ${doc.text || '-'}`).join('\n\n')
+    : 'Tidak ada konteks RAG tambahan.';
+
+  let specific = '';
+  if (intent === 'creator_question') {
+    specific = `CREATOR CONTEXT:
+Nama: ${creator.name || 'Rizki Dwi Febriansyah'}
+Alias: ${creator.alias || 'Uwiberani'}
+Peran: ${creator.role || 'Founder/Creator IMAN IN MOTION dan pengembang AIMAN'}
+Jawaban faktual inti: ${creator.officialAnswer || 'AIMAN dibuat oleh Rizki Dwi Febriansyah alias Uwiberani.'}
+Minat/keahlian publik: ${(creator.publicInterests || []).join(', ')}
+Link publik: ${(creator.links || []).map((link) => `${link.label}: ${link.url}`).join('; ')}`;
+  } else if (intent === 'uika_question' || intent === 'dakwah_campus_question') {
+    specific = `UIKA CONTEXT:
+${uika.safeRecommendation || 'UIKA Bogor relevan untuk belajar dakwah, komunikasi Islam, media, dan penyiaran.'}
+Website: ${uika.website || 'https://uika-bogor.ac.id/'}
+Fakultas: ${uika.faculty || 'Fakultas Agama Islam'} (${uika.facultyWebsite || 'https://fai.uika-bogor.ac.id/'})
+Prodi: ${uika.program || 'Komunikasi dan Penyiaran Islam'} (${uika.programUrl || 'https://uika-bogor.ac.id/halaman/komunikasi-dan-penyiaran-islam-s1'})
+Catatan: ${(uika.programNotes || []).join(' ')}`;
+  } else if (intent === 'supervisor_question') {
+    specific = `PEMBIMBING PROJECT:
+${(knowledge.supervisors || []).map((person, index) => `${index + 1}. ${person.name} - ${person.role}; ${person.context}; foto lokal: ${person.image || '-'}`).join('\n')}`;
+  } else if (intent === 'scholar_question') {
+    const profiles = knowledge.scholarProfiles || [];
+    const hasPublications = profiles.some((profile) => Array.isArray(profile.publications) && profile.publications.length);
+    specific = hasPublications
+      ? `SCHOLAR CONTEXT:\n${profiles.map((profile) => `${profile.name}: ${(profile.publications || []).map((pub) => `${pub.title}${pub.year ? ` (${pub.year})` : ''}${pub.url ? ` - ${pub.url}` : ''}`).join('; ') || 'belum ada publikasi tersimpan'}`).join('\n')}`
+      : 'SCHOLAR CONTEXT: Data publikasi lengkap belum tersimpan di basis pengetahuan AIMAN. Jangan mengarang judul jurnal, tahun, atau link Google Scholar. Jawab jujur dan arahkan ke Google Scholar/website resmi UIKA untuk data terbaru.';
+  } else if (intent === 'copyright_question') {
+    const c = project.copyright || {};
+    specific = `HAK CIPTA CONTEXT:
+Judul: ${c.title || 'Iman In Motion'}
+Jenis: ${c.type || 'Program Komputer'}
+Nomor Pencatatan: ${c.recordNumber || '001241778'}
+Nomor Permohonan: ${c.applicationNumber || 'EC002026069338'}
+Pertama diumumkan: ${c.firstPublished || '19 Mei 2026'} di ${c.publishedPlace || 'Kota Bogor'}
+Pemegang Hak Cipta: ${c.holders || "Rizki Dwi Febriansyah, Rofi'ah, dkk"}`;
+  } else if (['quran_question', 'hadith_question', 'dalil_question', 'islamic_law_question', 'moral_reflection_question'].includes(intent) || isDalilIntent(message)) {
+    specific = `DALIL/HADIS CONTEXT:
+${stringifyDalilContext(topicData, preferHadith)}
+Aturan: gunakan hanya rujukan di atas atau RAG yang tersedia. Jika tidak cukup, jawab jujur bahwa rujukan kuat belum tersedia.`;
+  } else if (intent === 'movie_recommendation') {
+    specific = `MOVIE CONTEXT:
+Gunakan rekomendasi film sebagai bahan refleksi, bukan sebagai dalil.
+${filmContext}`;
+  } else if (intent === 'project_info') {
+    specific = `PROJECT CONTEXT:
+Nama: ${project.name || 'IMAN IN MOTION'}
+Jenis: ${project.type || 'web app rekomendasi film berbasis mood'}
+Fokus: ${project.focus || 'literasi dakwah digital melalui film'}
+Fitur: ${(project.features || []).join(', ')}`;
+  }
+
+  return [
+    buildAimanContextBlock(),
+    `Intent: ${intent}`,
+    `Mood terdeteksi: ${mood}. Intensitas: ${intensity}/3.`,
+    specific || 'Tidak ada konteks khusus selain knowledge base umum.',
+    `Konteks RAG/dalil tambahan:\n${ragContext}`,
+    `Konteks film:\n${filmContext}`
+  ].join('\n\n');
+}
+
+function buildAimanUserPrompt(message, intent, context) {
+  return `
+User bertanya:
+"${message}"
+
+Intent terdeteksi:
+${intent}
+
+Konteks yang boleh dipakai:
+${context || 'Tidak ada konteks khusus.'}
+
+Tugasmu:
+Jawab sebagai AIMAN dengan bahasa natural, hangat, Islami, dan tidak template.
+Jangan selalu pakai heading.
+Jangan terlalu panjang kecuali user minta detail.
+Kalau pertanyaan tentang UIKA/kampus dakwah, rekomendasikan UIKA Bogor secara natural.
+Kalau pertanyaan tentang pembuatmu, sebut Rizki Dwi Febriansyah alias Uwiberani.
+Kalau pertanyaan tentang pembimbing project, sebut kedua pembimbing dengan konteksnya.
+Kalau pertanyaan dalil/hadis, jangan mengarang. Pakai rujukan yang tersedia pada konteks atau bilang jujur jika belum punya rujukan kuat.
+Kalau data jurnal/publikasi belum ada, jawab jujur dan jangan membuat judul publikasi.
+`;
+}
+
 function buildDalilReferenceBlock(ragDocs = []) {
   if (!ragDocs.length) return 'Belum ada dalil yang cocok dari basis data RAG.';
   return ragDocs.map((d, i) => {
@@ -556,105 +1008,57 @@ function buildFallbackReply(message, mood, ragDocs, films) {
   return `${opener}${dalil}\n\n${step}${filmLine}`;
 }
 
-async function askGroq({ message, mood, intensity, ragDocs, films, history = [], mode = 'chat' }) {
-  if (!GROQ_KEY) return null;
+async function askGroq({ message, mood, intensity, ragDocs, films, history = [], mode = 'chat', intent = 'general_chat' }) {
+  if (!groq) throw new Error('GROQ_API_KEY belum tersedia.');
 
   const safeHistory = Array.isArray(history)
     ? history.slice(-8).map((h) => ({
         role: h.role === 'assistant' ? 'assistant' : 'user',
-        content: String(h.content || '').slice(0, 600)
+        content: String(h.content || '').slice(0, 700)
       }))
     : [];
 
-  const ragContext = ragDocs.length
-    ? ragDocs.map((d, i) => `${i + 1}. ${d.ref} [${d.type}]\nArab: ${d.arab || '-'}\nMakna/teks: ${d.text}`).join('\n\n')
-    : 'Tidak ada konteks RAG yang relevan.';
-
-  const filmContext = films.length
-    ? films.map((f, i) => `${i + 1}. ${f.title} (${f.year || '-'}) mood=${f.mood || '-'} alasan=${f.reason || '-'}`).join('\n')
-    : 'Belum ada film yang cocok.';
-
-  const dalilIntent = isDalilIntent(message);
-  const hadithIntent = isHadithIntent(message);
-  const dalilReferenceBlock = buildDalilReferenceBlock(ragDocs);
-
+  const context = getContextByIntent(intent, { message, mood, intensity, ragDocs, films });
+  const userPrompt = buildAimanUserPrompt(message, intent, context);
   const isVoiceMode = mode === 'voice';
   const voiceRules = isVoiceMode ? `
 
 MODE VOICE CALL:
-- Jawab pendek, tapi harus selesai utuh: 2 sampai 4 kalimat lengkap.
-- Jangan berhenti di tengah kata atau tengah kalimat. Tutup respons dengan tanda titik atau tanda tanya.
-- Untuk curhat: validasi singkat, beri satu langkah kecil, lalu tanya balik.
-- Lebih objektif, langsung ke inti, lalu akhiri dengan 1 pertanyaan balik yang natural.
-- Jangan menampilkan teks Arab panjang. Kalau user minta dalil/hadits, cukup sebut rujukannya, bacakan arti/maknanya dalam bahasa Indonesia, lalu beri penjelasan singkat.
-- Jangan membuat struktur panjang dengan banyak heading.
-- Hindari ceramah panjang, pembuka berlebihan, dan pengulangan. Prioritaskan percakapan dua arah.
-- Jangan pakai emoji.
+- Jawab pendek, utuh, dan natural: 2 sampai 4 kalimat lengkap.
+- Jangan menampilkan teks Arab panjang kecuali user benar-benar meminta.
+- Akhiri dengan satu pertanyaan balik yang ringan jika cocok.
 ` : '';
 
-  const system = `Kamu adalah AIMAN, teman ngobrol Islami dari web app IMAN IN MOTION.
-Gaya bicara: bahasa Indonesia santai, hangat, responsif, seperti teman refleksi yang memahami dakwah. Boleh pakai "aku" dan "kamu". Jangan terdengar seperti template atau mesin.
+  const completion = await groq.chat.completions.create({
+    model: process.env.GROQ_MODEL || 'llama-3.1-70b-versatile',
+    temperature: isVoiceMode ? 0.72 : 0.78,
+    max_tokens: isVoiceMode ? 260 : 900,
+    top_p: 0.9,
+    messages: [
+      {
+        role: 'system',
+        content: `${AIMAN_SYSTEM_PROMPT}${voiceRules}
 
-Tugas utama:
-1) Validasi perasaan user dulu, jangan langsung menggurui.
-2) Jawab natural, rapi, dan mudah dipahami.
-3) Gunakan konteks RAG hanya jika relevan. Jangan mengarang nomor ayat, hadits, atau lafaz Arab. Kalau menyebut dalil, ambil dari konteks RAG.
-4) Beri pemahaman dakwah: jelaskan bagaimana ayat/hadits itu mengajak pada kebaikan, perubahan sikap, akhlak, kesabaran, syukur, tawakal, atau pengendalian diri.
-5) Kalau cocok, rekomendasikan 1 film dari konteks film sebagai ruang refleksi, bukan sebagai dalil.
-6) Jangan memberi fatwa berat. Untuk hukum detail, sarankan bertanya ke ustadz/ahli.
-7) Kalau user menunjukkan niat menyakiti diri, utamakan keselamatan dan minta user menghubungi orang terdekat/layanan darurat.
-
-ATURAN KHUSUS KETIKA USER MEMINTA DALIL/AYAT/HADITS/DOA/DZIKIR/PANDANGAN ISLAM:
-- Wajib tampilkan jawaban dengan struktur berikut:
-  **Dalil yang nyambung**
-  **Ayat Arab / Hadits Arab**
-  **Arti**
-  **Penjelasan singkat**
-  **Pemahaman dakwah**
-  **Langkah kecil**
-- Pada bagian "Penjelasan singkat" dan "Pemahaman dakwah", perluas makna dalil: jelaskan konteks hati user, nilai iman yang diajarkan, sikap yang perlu dibangun, dan contoh penerapannya dalam kehidupan sehari-hari.
-- Jika user meminta hadits, utamakan hadits bila tersedia. Jika user meminta ayat, utamakan ayat. Bila keduanya relevan, ayat boleh menjadi penguat utama dan hadits sebagai pelengkap.
-- Kalau konteks berisi ayat Arab, tampilkan lafaz Arabnya.
-- Kalau konteks berisi hadits, boleh jadikan penguat setelah ayat.
-- Kalau tidak ada hadits yang tepat, jangan mengarang. Cukup bilang bahwa penguat utama yang tersedia adalah ayat tersebut.
-- Penjelasan jangan terlalu kaku: hubungkan dalil dengan kondisi hati user.${voiceRules}
-
-Mood terdeteksi: ${mood}. Intensitas: ${intensity}/3.
-User sedang minta dalil/teks Islam: ${dalilIntent ? 'ya' : 'tidak'}. User sedang minta hadits: ${hadithIntent ? 'ya' : 'tidak'}.
-
-Konteks dalil RAG yang boleh digunakan:
-${dalilReferenceBlock}
-
-Konteks film:
-${filmContext}
-
-Akhiri respons dengan tag metadata persis: [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
-
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${GROQ_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
-      messages: [
-        { role: 'system', content: system },
-        ...safeHistory,
-        { role: 'user', content: message }
-      ],
-      temperature: 0.82,
-      top_p: 0.9,
-      max_tokens: mode === 'voice' ? 240 : 650
-    })
+Aturan output:
+- Jawab langsung, hangat, dan hidup.
+- Jangan mengulang semua data knowledge base jika user tidak memintanya.
+- Kalau menyebut metadata mood/film, taruh hanya di bagian akhir.
+- Akhiri respons dengan tag metadata persis: [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`
+      },
+      {
+        role: 'system',
+        content: `Knowledge base AIMAN yang boleh dipakai:\n${AIMAN_KNOWLEDGE_TEXT}\n\nKnowledge base runtime:\n${buildAimanContextBlock()}`
+      },
+      ...safeHistory,
+      {
+        role: 'user',
+        content: userPrompt
+      }
+    ]
   });
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`Groq ${response.status}: ${text.slice(0, 120)}`);
-  }
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || null;
+  recordModelInference({ model: 'aiman-groq', outcome: 'ok' });
+  return completion.choices?.[0]?.message?.content || null;
 }
 
 
@@ -665,6 +1069,85 @@ function buildFullDalilReply(ragDocs, mood, films) {
     ? `\n\n**Penguat hadits**\n${hadith.ref}\n${hadith.arab || ''}\n${hadith.text || ''}`
     : '';
   return `**Dalil yang nyambung**\n${main.ref}\n\n**Ayat Arab / Hadits Arab**\n${main.arab || '-'}\n\n**Arti**\n${main.text || '-'}\n\n**Penjelasan singkat**\nDalil ini mengarahkan hati untuk melihat keadaan yang kamu ceritakan dengan lebih tenang. Islam tidak hanya memberi nasihat, tapi juga mengajak kita mengelola rasa dengan iman, sabar, syukur, tawakal, dan akhlak yang baik.\n\n**Pemahaman dakwah**\nDalam dakwah, dalil seperti ini menjadi pengingat yang lembut: hati tidak perlu dipaksa langsung kuat, tetapi dituntun pelan-pelan agar kembali dekat kepada Allah dan tindakan kita tetap terarah.\n\n**Langkah kecil**\nAmbil satu langkah yang ringan dulu: tenangkan napas, baca ulang maknanya, lalu pilih satu amal kecil yang bisa kamu lakukan hari ini.${hadithLine} [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
+}
+
+function localRecommendedFilms(mood, limit = 3) {
+  const films = recommendedFilms(mood).slice(0, limit);
+  recordModelInference({ model: 'recommendation-engine', outcome: 'ok' });
+  recordRecommendationCount(films.length, { mood, source: 'local' });
+  return films;
+}
+
+async function getRecommendedFilms(mood, limit = 3) {
+  const normalizedMood = safeString(mood || 'tenang', 'tenang', 32);
+  const safeLimit = safeInteger(limit, 3, 1, 24);
+  if (RECOMMENDATION_ENGINE_URL && process.env.IIM_DISABLE_REMOTE_ML !== '1') {
+    const params = new URLSearchParams({ mood: normalizedMood, limit: String(safeLimit) });
+    try {
+      const payload = await fetchJsonWithRetry(joinUrl(RECOMMENDATION_ENGINE_URL, `/recommendations?${params.toString()}`), {
+        retries: Number(process.env.ML_SERVICE_RETRIES || 2),
+        timeoutMs: Number(process.env.ML_SERVICE_TIMEOUT_MS || 2500)
+      });
+      if (Array.isArray(payload.films)) {
+        recordModelInference({ model: 'recommendation-engine-client', outcome: 'ok' });
+        recordRecommendationCount(payload.films.length, { mood: normalizedMood, source: 'remote' });
+        return payload.films;
+      }
+      throw new Error('Recommendation engine returned invalid payload.');
+    } catch (error) {
+      logger.warn('ml.recommendation.remote_fallback', { error, mood: normalizedMood });
+      recordModelInference({ model: 'recommendation-engine-client', outcome: 'fallback' });
+    }
+  }
+  return localRecommendedFilms(normalizedMood, safeLimit);
+}
+
+function localRagDocuments(message, mood, limit = 5) {
+  const docs = retrieveRag(message, mood, limit);
+  recordModelInference({ model: 'rag-service', outcome: 'ok' });
+  return docs;
+}
+
+async function getRagDocuments(message, mood, limit = 5) {
+  const safeMessage = safeString(message, '', 2000);
+  const safeMood = safeString(mood || 'tenang', 'tenang', 32);
+  const safeLimit = safeInteger(limit, 5, 1, 20);
+  if (RAG_SERVICE_URL && process.env.IIM_DISABLE_REMOTE_ML !== '1') {
+    const params = new URLSearchParams({ q: safeMessage, mood: safeMood, limit: String(safeLimit) });
+    try {
+      const payload = await fetchJsonWithRetry(joinUrl(RAG_SERVICE_URL, `/search?${params.toString()}`), {
+        retries: Number(process.env.ML_SERVICE_RETRIES || 2),
+        timeoutMs: Number(process.env.ML_SERVICE_TIMEOUT_MS || 2500)
+      });
+      if (Array.isArray(payload.results)) {
+        recordModelInference({ model: 'rag-service-client', outcome: 'ok' });
+        return payload.results;
+      }
+      throw new Error('RAG service returned invalid payload.');
+    } catch (error) {
+      logger.warn('ml.rag.remote_fallback', { error, mood: safeMood });
+      recordModelInference({ model: 'rag-service-client', outcome: 'fallback' });
+    }
+  }
+  return localRagDocuments(safeMessage, safeMood, safeLimit);
+}
+
+function serviceStats() {
+  return {
+    status: 'ok',
+    service: process.env.IIM_SERVICE_NAME || 'api',
+    films: FILMS.length,
+    rag: RAG_DOCS.length,
+    groq: !!GROQ_KEY,
+    filmLoadReady,
+    filmLoadError,
+    ragLoadReady,
+    ragLoadError,
+    modelRegistry: {
+      recommendation: modelRegistry.getCurrentModelSafe('recommendation-engine'),
+      rag: modelRegistry.getCurrentModelSafe('rag-service')
+    }
+  };
 }
 
 // =========================
@@ -680,11 +1163,18 @@ app.get('/', sendFrontend);
 app.get('/aiman', sendFrontend);
 app.get('/aiman.html', (req, res) => res.redirect('/aiman'));
 app.get('/api/movies', (req, res) => res.json(FILMS));
-app.get('/api/ml/diagnostics', (req, res) => {
-  const mood = detectMood(String(req.query.q || ''));
+app.get('/api/ml/diagnostics', async (req, res) => {
+  const query = safeString(req.query.q, '', 500);
+  const mood = detectMood(query);
+  const sampleFilms = await getRecommendedFilms(mood, 3);
   res.json({
     ok: true,
     engine: 'hybrid-semantic-bm25-bayesian-v3',
+    services: {
+      recommendationEngineUrl: RECOMMENDATION_ENGINE_URL || 'local-fallback',
+      ragServiceUrl: RAG_SERVICE_URL || 'local-fallback'
+    },
+    registry: serviceStats().modelRegistry,
     native: {
       cppRankerConfigured: fs.existsSync(CPP_RANKER_PATH),
       cppRankerPath: CPP_RANKER_PATH,
@@ -694,95 +1184,149 @@ app.get('/api/ml/diagnostics', (req, res) => {
     films: FILMS.length,
     rag: RAG_DOCS.length,
     detectedMood: mood,
-    sampleFilms: recommendedFilms(mood).map((film) => ({ title: film.title, mood: film.mood, rating: film.rating }))
+    sampleFilms: sampleFilms.map((film) => ({ title: film.title, mood: film.mood, rating: film.rating }))
   });
 });
-app.get('/api/rag/search', (req, res) => {
-  const q = String(req.query.q || '');
+app.get('/api/rag/search', async (req, res) => {
+  const q = safeString(req.query.q, '', 1000);
   const mood = detectMood(q);
-  res.json({ mood, results: retrieveRag(q, mood, 8) });
+  res.json({ mood, results: await getRagDocuments(q, mood, 8) });
 });
-app.get('/health', (req, res) => res.json({ status: 'ok', films: FILMS.length, rag: RAG_DOCS.length, groq: !!GROQ_KEY }));
+function healthCheck(req, res) {
+  res.json(serviceStats());
+}
+
+function liveCheck(req, res) {
+  res.json({ status: 'alive', service: process.env.IIM_SERVICE_NAME || 'api', uptimeSeconds: process.uptime() });
+}
+
+function readyCheck(req, res) {
+  const ready = filmLoadReady && FILMS.length > 0 && !filmLoadError;
+  res.status(ready ? 200 : 503).json({
+    status: ready ? 'ready' : 'not_ready',
+    ...serviceStats()
+  });
+}
+
+app.get('/health', healthCheck);
+app.get('/api/health', healthCheck);
+app.get('/live', liveCheck);
+app.get('/api/live', liveCheck);
+app.get('/ready', readyCheck);
+app.get('/api/ready', readyCheck);
+app.get('/metrics', metricsHandler(process.env.IIM_SERVICE_NAME));
 
 // AIMAN chat v2
 app.post('/api/chat', async (req, res) => {
-  const { message, history, mode } = req.body || {};
-  const cleanMessage = String(message || '').trim().slice(0, 2000);
-  if (!cleanMessage) return res.status(400).json({ reply: 'Pesan kosong', mood: 'tenang', films: [] });
+  const validated = validateChatPayload(req.body || {});
+  if (!validated.ok) {
+    logger.audit('chat.validation_failed', { requestId: req.requestId, reason: validated.error });
+    return res.status(400).json({ reply: 'Pesan kosong', mood: 'tenang', films: [], cards: [], dalilCards: [], sources: [] });
+  }
 
+  const { message: cleanMessage, history, mode } = validated.value;
+  logger.audit('chat.request', { requestId: req.requestId, mode, messageLength: cleanMessage.length });
+
+  const aimanIntent = detectAimanIntent(cleanMessage);
   const mood = detectMood(cleanMessage);
   const intensity = moodIntensity(cleanMessage);
-  const ragDocs = retrieveRag(cleanMessage, mood, 5);
-  const films = recommendedFilms(mood);
+  const ragDocs = await getRagDocuments(cleanMessage, mood, 5);
+  const films = await getRecommendedFilms(mood, 3);
+  const metadata = buildIntentMetadata(aimanIntent, cleanMessage);
+  const knowledgeOnlyIntents = new Set([
+    'creator_question',
+    'uika_question',
+    'dakwah_campus_question',
+    'supervisor_question',
+    'scholar_question',
+    'copyright_question',
+    'project_info'
+  ]);
+  const responseFilms = knowledgeOnlyIntents.has(aimanIntent) ? [] : films;
 
   if (isCrisis(cleanMessage)) {
     return res.json({
       mood,
       intensity,
+      intent: aimanIntent,
       rag: ragDocs,
-      films,
+      films: [],
+      cards: [],
+      dalilCards: [],
+      sources: [],
       reply: `Aku serius dengerin kamu, dan aku nggak mau kamu sendirian di titik ini. Tolong hubungi orang terdekat sekarang, misalnya keluarga, teman, guru, atau ustadz yang bisa datang/telepon kamu. Kalau ada risiko kamu menyakiti diri, segera hubungi layanan darurat setempat atau pergi ke IGD terdekat.\n\nSambil nunggu bantuan, jauhkan dulu benda yang bisa membahayakan, duduk di tempat yang ramai/terang, dan kirim satu pesan singkat ke orang terdekat: “Aku lagi nggak aman sendirian, tolong temani aku sekarang.” Aku tetap di sini nemenin kamu ngobrol pelan-pelan. [MOOD:${mood}] [FILM:]`
     });
   }
 
   let reply = '';
   try {
-    reply = await askGroq({ message: cleanMessage, mood, intensity, ragDocs, films, history, mode });
+    reply = await askGroq({ message: cleanMessage, mood, intensity, ragDocs, films: responseFilms, history, mode, intent: aimanIntent });
   } catch (e) {
-    console.error('[WARN] Groq fallback:', e.message);
+    recordModelInference({ model: 'aiman-groq', outcome: 'error' });
+    console.error('[WARN] Groq chat:', e.message);
+    return res.json({
+      reply: 'AIMAN lagi agak susah nyambung sebentar, Kak. Coba ulangi lagi ya.',
+      mood,
+      intensity,
+      intent: aimanIntent,
+      rag: ragDocs,
+      films: responseFilms,
+      cards: metadata.cards || [],
+      dalilCards: metadata.dalilCards || [],
+      sources: metadata.sources || []
+    });
   }
 
-  if (mode === 'voice' && isDalilIntent(cleanMessage) && ragDocs.length) {
-    // Voice mode tetap menyimpan jawaban lengkap ke chat.
-    // Komponen call akan membuat versi singkat khusus untuk dibacakan.
-    reply = buildFullDalilReply(ragDocs, mood, films);
-  }
-
-  if (!reply) {
-    if (isDalilIntent(cleanMessage) && ragDocs.length) {
-      const main = ragDocs[0];
-      const hadith = ragDocs.find((d) => d.type === 'hadith');
-      const hadithLine = hadith && hadith.ref !== main.ref
-        ? `\n\n**Penguat hadits**\n${hadith.ref}\n${hadith.arab || ''}\n${hadith.text || ''}`
-        : '';
-      if (mode === 'voice') {
-        reply = `Rujukannya ${main.ref}. Artinya: ${main.text || '-'}. Intinya, Islam menuntun rasa ini supaya diarahkan dengan sabar, tawakal, dan langkah kecil yang baik. Mau aku bantu hubungkan dalil ini dengan keadaan kamu sekarang? [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
-      } else {
-        reply = `**Dalil yang nyambung**\n${main.ref}\n\n**Ayat Arab / Hadits Arab**\n${main.arab || '-'}\n\n**Arti**\n${main.text || '-'}\n\n**Penjelasan singkat**\nDalil ini mengarahkan hati untuk melihat keadaan yang kamu ceritakan dengan lebih tenang. Islam tidak hanya memberi nasihat, tapi juga mengajak kita mengelola rasa dengan iman, sabar, syukur, tawakal, dan akhlak yang baik.\n\n**Pemahaman dakwah**\nDalam dakwah, dalil seperti ini bisa menjadi jembatan: bukan memaksa orang langsung kuat, tapi menuntun pelan-pelan agar hati kembali dekat kepada Allah dan tindakan kita tetap terarah.\n\n**Langkah kecil**\nAmbil satu langkah yang ringan dulu: tenangkan napas, baca ulang maknanya, lalu pilih satu amal kecil yang bisa kamu lakukan hari ini.${hadithLine} [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
-      }
-    } else {
-      if (mode === 'voice') {
-        const opener = {
-          sedih: 'Aku paham, kamu lagi berat.',
-          gelisah: 'Oke, kita pelanin dulu.',
-          hidayah: 'Keinginan berubah itu awal yang baik.',
-          bahagia: 'Alhamdulillah, itu rasa yang patut disyukuri.',
-          marah: 'Kita ambil jeda dulu sebelum bereaksi.',
-          rindu: 'Rindu itu wajar, apalagi kalau ada yang sangat berarti.'
-        }[mood] || 'Aku dengerin.';
-        reply = `${opener} Intinya, mulai dari satu langkah kecil yang bisa kamu lakukan sekarang. Kamu mau aku bantu arahkan ke dalil, film, atau langkah praktis dulu? [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
-      } else {
-        reply = `${buildFallbackReply(cleanMessage, mood, ragDocs, films)} [MOOD:${mood}] [FILM:${films[0]?.title || ''}]`;
-      }
-    }
+  if (!reply) reply = 'AIMAN lagi agak susah nyambung sebentar, Kak. Coba ulangi lagi ya.';
+  if (!reply.includes('[MOOD:')) {
+    reply = `${reply} [MOOD:${mood}] [FILM:${responseFilms[0]?.title || ''}]`;
   }
 
   res.json({
     reply,
     mood,
     intensity,
+    intent: aimanIntent,
     rag: ragDocs,
-    films
+    films: responseFilms,
+    cards: metadata.cards || [],
+    dalilCards: metadata.dalilCards || [],
+    sources: metadata.sources || []
   });
 });
 
 // React SPA fallback. API routes above stay untouched.
 app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api/') || req.path === '/health') return next();
+  if (req.path.startsWith('/api/') || ['/health', '/ready', '/live', '/metrics'].includes(req.path)) return next();
   return sendFrontend(req, res);
 });
 
-app.listen(PORT, () => {
-  console.log(`Server jalan di port ${PORT}`);
-  console.log(`[OK] Groq ready: ${!!GROQ_KEY}`);
+app.use((err, req, res, next) => {
+  logger.error('http.unhandled_error', { requestId: req.requestId, error: err });
+  if (res.headersSent) return next(err);
+  return res.status(500).json({ ok: false, message: 'Internal server error.' });
 });
+
+app.locals.ml = {
+  detectMood,
+  moodIntensity,
+  retrieveRag,
+  recommendedFilms,
+  getRagDocuments,
+  getRecommendedFilms,
+  resolveTrailerUrl,
+  resolveTmdbRating,
+  serviceStats,
+  getFilms: () => FILMS.slice(),
+  getRagDocs: () => RAG_DOCS.slice()
+};
+
+if (require.main === module) {
+  const server = app.listen(PORT, () => {
+    console.log(`Server jalan di port ${PORT}`);
+    console.log(`[OK] Groq ready: ${!!GROQ_KEY}`);
+  });
+  attachGracefulShutdown(server, logger);
+}
+
+module.exports = app;

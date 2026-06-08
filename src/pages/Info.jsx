@@ -3,6 +3,7 @@ import { BadgeCheck, ChevronDown, Copy, FileText, Instagram, ShieldCheck, UserRo
 import SectionTitle from '../components/SectionTitle';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { assetUrl } from '../utils/assetUrl';
 
 const educationLine = 'Komunikasi dan Penyiaran Islam • Fakultas Agama Islam • UIKA Bogor';
 
@@ -11,13 +12,13 @@ const projectAdvisors = [
     name: 'Prof. Dr. H.E. Mujahidin',
     role: 'Pembimbing Project',
     title: 'Rektor UIKA Bogor',
-    image: '/mujahidin.png'
+    image: assetUrl('mujahidin.png')
   },
   {
     name: 'Dr. Rofiah, M.Si.',
     role: 'Pembimbing Project',
     title: 'Kaprodi KPI UIKA Bogor',
-    image: '/rofiah.png'
+    image: assetUrl('rofiah.png')
   }
 ];
 
@@ -26,7 +27,7 @@ const teamMembers = [
     name: 'Rizki Dwi Febriansyah',
     shortName: 'Dwi',
     label: 'Founder • Fullstack Developer • UI/UX Designer • Creative Media',
-    image: '/dwi.jpg',
+    image: assetUrl('dwi.jpg'),
     imagePosition: 'center 20%',
     badge: 'Project Lead',
     instagram: '@uwiberani',
@@ -39,7 +40,7 @@ const teamMembers = [
     name: 'Faris All Farizki',
     shortName: 'Faris',
     label: 'Media Center • Layout & Function Arrangement',
-    image: '/faris.jpg',
+    image: assetUrl('faris.jpg'),
     imagePosition: 'center 28%',
     badge: 'Media Center',
     instagram: '',
@@ -71,7 +72,7 @@ const copyrightDetails = [
   ['Pertama Diumumkan', '19 Mei 2026, Kota Bogor']
 ];
 
-const copyrightCertificatePath = '/sertifikat-hak-cipta-iman-in-motion.pdf';
+const copyrightCertificatePath = assetUrl('sertifikat-hak-cipta-iman-in-motion.pdf');
 
 const tabs = [
   ['about', 'Tentang IMAN IN MOTION'],
@@ -113,7 +114,7 @@ export default function Info() {
   }
 
   return (
-    <section className="container-page py-12 md:py-16">
+    <section className="info-page container-page py-12 md:py-16" data-page="info">
       <SectionTitle eyebrow="Info Project" title={title} description="Pusat informasi IMAN IN MOTION: konsep aplikasi, team, catatan hak cipta, dan bantuan penggunaan." />
 
       <div className="info-mobile-picker mb-8 md:hidden">
