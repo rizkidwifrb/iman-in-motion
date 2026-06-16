@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import FilmCard from '../components/FilmCard';
 import { MoodFilmGridSkeleton } from '../components/Skeletons';
 import { MOODS, getGenres, getMoodByKey, searchMovies } from '../services/recommendationService';
+import { getRandomDalilByMood } from '../services/dalilRagService';
 import useMoodStats from '../hooks/useMoodStats';
 import { useLanguageCopy } from '../utils/i18n';
 import { assetUrl } from '../utils/assetUrl';
@@ -26,6 +27,7 @@ export default function Mood() {
   const { trackMood } = useMoodStats();
   const trackedInitial = useRef('');
   const mood = getMoodByKey(currentMood);
+  const [activeDalil, setActiveDalil] = useState(() => getRandomDalilByMood(getInitialMood()));
 
   useEffect(() => {
     const syncFromHash = () => {
@@ -66,11 +68,19 @@ export default function Mood() {
     trackMood(currentMood, { movieCount: movies.length });
   }, [currentMood, movies.length, trackMood]);
 
+  useEffect(() => {
+    setActiveDalil(getRandomDalilByMood(currentMood));
+  }, [currentMood]);
+
   function chooseMood(key) {
     setCurrentMood(key);
     setMenuOpen(false);
     localStorage.setItem('iman_last_mood', key);
     window.history.replaceState(null, '', `#/mood?mood=${encodeURIComponent(key)}`);
+  }
+
+  function changeDalil() {
+    setActiveDalil((current) => getRandomDalilByMood(currentMood, { excludeId: current?.id }));
   }
 
   return (
@@ -121,13 +131,28 @@ export default function Mood() {
 
       <main className="mood-main">
         <section className="mood-dalil-box" data-aos="fade-left">
-          <span className="mood-badge">{ui.dalilForYou}</span>
+          <div className="mood-dalil-head">
+            <span className="mood-badge">{ui.dalilForYou}</span>
+            <button type="button" className="mood-change-dalil" onClick={changeDalil}>
+              Ubah dalil
+            </button>
+          </div>
           <h1>{mood.title}</h1>
           <p className="max-w-3xl text-base font-semibold leading-8 text-white/62">{mood.description}</p>
-          <div className="mood-arabic">{mood.arabic}</div>
+          <div className="mood-arabic">{activeDalil?.arab || mood.arabic}</div>
           <p className="mt-4 max-w-4xl text-lg font-semibold leading-8 text-white/72">
-            {mood.dalilText} <span className="font-black text-[var(--mood-accent)]">({mood.dalil})</span>
+            {activeDalil?.text || mood.dalilText} <span className="font-black text-[var(--mood-accent)]">({activeDalil?.ref || mood.dalil})</span>
           </p>
+          {activeDalil?.explanation && (
+            <p className="mood-dalil-explanation">{activeDalil.explanation}</p>
+          )}
+          {activeDalil?.type && (
+            <p className="mood-dalil-source">
+              {activeDalil.type === 'hadith' ? 'Hadis' : "Al-Qur'an"}
+              {activeDalil.grade ? ` • ${activeDalil.grade}` : ''}
+              {activeDalil.source ? ` • ${activeDalil.source}` : ''}
+            </p>
+          )}
         </section>
 
         <section className="mood-toolbar" data-aos="fade-left" data-aos-delay="80">

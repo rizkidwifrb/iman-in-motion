@@ -8,6 +8,7 @@ import { PageSkeleton } from './components/Skeletons';
 
 const Home = React.lazy(() => import('./pages/Home'));
 const Mood = React.lazy(() => import('./pages/Mood'));
+const EnhancedMoodPage = React.lazy(() => import('./pages/EnhancedMoodPage'));
 const Film = React.lazy(() => import('./pages/Film'));
 const FilmDetail = React.lazy(() => import('./pages/FilmDetail'));
 const Articles = React.lazy(() => import('./pages/Articles'));
@@ -18,7 +19,7 @@ const Account = React.lazy(() => import('./pages/Account'));
 
 import { initialsFromUser, migrateLocalAccountDataToFirestore } from './utils/accountStorage';
 import { loadFirebaseAuthClient } from './utils/firebaseClient';
-import { getCopy, languageOptions } from './utils/i18n';
+import { getCopy } from './utils/i18n';
 import { initMotionExperience } from './utils/motionExperience';
 import { assetUrl } from './utils/assetUrl';
 
@@ -51,6 +52,8 @@ function storeFirebaseUser(user) {
 const routes = {
   '/': Home,
   '/mood': Mood,
+  '/mood-pro': EnhancedMoodPage,
+  '/mood-enhanced': EnhancedMoodPage,
   '/film': Film,
   '/articles': Articles,
   '/artikel': Articles,
@@ -83,6 +86,11 @@ function getPath() {
 
 function Link({ to, children, className = '', onClick }) {
   return <a href={`#${to}`} onClick={onClick} className={className}>{children}</a>;
+}
+
+function firstNameFromUser(user) {
+  const source = user?.name || user?.displayName || user?.email?.split('@')[0] || 'Akun';
+  return String(source).trim().split(/\s+/)[0] || 'Akun';
 }
 
 function ThemeToggle({ theme, setTheme }) {
@@ -132,19 +140,11 @@ function AuthModal({ mode, setMode, close, theme, setTheme }) {
   const [savedUser, setSavedUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('iman_user') || 'null'); } catch { return null; }
   });
-  const [language, setLanguage] = useState(() => localStorage.getItem('iim-language') || 'id');
+  const [language, setLanguage] = useState('id');
   const [closing, setClosing] = useState(false);
   const tSettings = getCopy(language).settings;
 
-  function changeLanguage(code) {
-    setLanguage(code);
-    localStorage.setItem('iim-language', code);
-    document.documentElement.lang = code;
-    document.documentElement.dir = code === 'ar' ? 'rtl' : 'ltr';
-    window.dispatchEvent(new CustomEvent('iim-language-change'));
-    const settingsCopy = getCopy(code).settings;
-    window.dispatchEvent(new CustomEvent('iim-toast', { detail: `${settingsCopy.changed} ${languageOptions.find((item) => item.code === code)?.label || code}.` }));
-  }
+  // Single-language build: language is fixed to Indonesian ('id')
 
   useEffect(() => {
     if (mode === 'auth') {
@@ -298,22 +298,7 @@ function AuthModal({ mode, setMode, close, theme, setTheme }) {
               );
             })}
 
-            <label className="settings-row" style={{ '--settings-delay': '0.105s' }}>
-              <span className="settings-row-main">
-                <span className="settings-row-icon"><Languages size={17} /></span>
-                <span className="text-sm font-black text-iim-coffee dark:text-iim-cream">Bahasa</span>
-              </span>
-              <select
-                className="settings-select"
-                value={language}
-                onChange={(event) => changeLanguage(event.target.value)}
-                aria-label="Bahasa"
-              >
-                {languageOptions.map((item) => (
-                  <option key={item.code} value={item.code}>{item.label}</option>
-                ))}
-              </select>
-            </label>
+            {/* Bahasa selector removed - single language (Bahasa Indonesia) enforced */}
 
             <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="settings-row" style={{ '--settings-delay': '0.14s' }}>
               <span className="settings-row-main">
@@ -371,30 +356,25 @@ function AuthModal({ mode, setMode, close, theme, setTheme }) {
 function Navbar({ path, theme, setTheme }) {
   const [modal, setModal] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [language, setLanguage] = useState(() => localStorage.getItem('iim-language') || 'id');
+  const [language, setLanguage] = useState('id');
   const t = getCopy(language);
   const [toast, setToast] = useState('');
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('iman_user') || 'null'); } catch { return null; }
   });
+  const coreLinks = [
+    ['/', t.nav.home, HomeIcon],
+    ['/mood', t.nav.mood, SmilePlus],
+    ['/film', t.nav.film, FilmIcon],
+    ['/articles', t.nav.articles, BookOpen],
+    ['/aiman', t.nav.aiman, MessageCircle]
+  ];
   const desktopLinks = [
-    ['/', t.nav.home, HomeIcon],
-    ['/mood', t.nav.mood, SmilePlus],
-    ['/film', t.nav.film, FilmIcon],
-    ['/articles', t.nav.articles, BookOpen],
-    ['/aiman', t.nav.aiman, MessageCircle],
-    ['/info', t.nav.info, InfoIcon],
-    ...(user ? [['/account', t.nav.account, UserRound]] : [])
+    ...coreLinks,
+    ['/info', t.nav.info, InfoIcon, 'desktop-menu-link-secondary'],
+    ...(user ? [['/account', t.nav.account, UserRound, 'desktop-menu-link-secondary']] : [])
   ];
-  const mobileLinks = [
-    ['/', t.nav.home, HomeIcon],
-    ['/mood', t.nav.mood, SmilePlus],
-    ['/film', t.nav.film, FilmIcon],
-    ['/articles', t.nav.articles, BookOpen],
-    ['/aiman', t.nav.aiman, MessageCircle],
-    ['/info', t.nav.info, InfoIcon],
-    ...(user ? [['/account', t.nav.account, UserRound]] : [])
-  ];
+  const mobileLinks = coreLinks;
   const isActive = (to) => path === to || (to === '/account' && path === '/akun') || (to === '/articles' && path.startsWith('/article/')) || (to === '/film' && path.startsWith('/film/'));
 
   async function handleGoogleNav() {
@@ -436,10 +416,9 @@ function Navbar({ path, theme, setTheme }) {
   }, []);
 
   useEffect(() => {
-    const syncLanguage = () => setLanguage(localStorage.getItem('iim-language') || 'id');
+    const syncLanguage = () => setLanguage('id');
     window.addEventListener('storage', syncLanguage);
-    window.addEventListener('iim-language-change', syncLanguage);
-    return () => { window.removeEventListener('storage', syncLanguage); window.removeEventListener('iim-language-change', syncLanguage); };
+    return () => { window.removeEventListener('storage', syncLanguage); };
   }, []);
 
   return (
@@ -455,11 +434,11 @@ function Navbar({ path, theme, setTheme }) {
           </Link>
 
           <nav className="desktop-menu hidden items-center gap-1 md:flex">
-            {desktopLinks.map(([to, label]) => (
+            {desktopLinks.map(([to, label, Icon, responsiveClass = '']) => (
               <Link
                 key={to}
                 to={to}
-                className={`desktop-menu-link rounded-2xl px-4 py-2 text-sm font-bold transition ${isActive(to) ? 'bg-iim-coffee text-iim-cream shadow-glow dark:bg-iim-gold dark:text-iim-charcoal' : 'text-iim-coffee hover:bg-white/60 dark:text-iim-cream dark:hover:bg-white/10'}`}
+                className={`desktop-menu-link ${responsiveClass} rounded-2xl px-4 py-2 text-sm font-bold transition ${isActive(to) ? 'bg-iim-coffee text-iim-cream shadow-glow dark:bg-iim-gold dark:text-iim-charcoal' : 'text-iim-coffee hover:bg-white/60 dark:text-iim-cream dark:hover:bg-white/10'}`}
               >
                 {label}
               </Link>
@@ -490,12 +469,23 @@ function Navbar({ path, theme, setTheme }) {
             </div>
           </Link>
           <div className="mobile-account-actions">
-            <button type="button" onClick={handleGoogleNav} className="mobile-google-btn" aria-label="Login Google">
-              G
-            </button>
-            <button type="button" onClick={() => user ? (window.location.hash = '#/account') : setModal('auth')} className="mobile-login-btn">
-              {user ? t.nav.account : t.nav.login}
-            </button>
+            {user ? (
+              <button type="button" onClick={() => { window.location.hash = '#/account'; }} className="mobile-user-pill" aria-label={`Buka akun ${firstNameFromUser(user)}`}>
+                <span className="mobile-user-avatar">
+                  {user.photoURL ? <img src={user.photoURL} alt={user.name || 'Akun'} /> : initialsFromUser(user)}
+                </span>
+                <span className="mobile-user-name">{firstNameFromUser(user)}</span>
+              </button>
+            ) : (
+              <>
+                <button type="button" onClick={handleGoogleNav} className="mobile-google-btn" aria-label="Login Google">
+                  G
+                </button>
+                <button type="button" onClick={() => setModal('auth')} className="mobile-login-btn">
+                  {t.nav.login}
+                </button>
+              </>
+            )}
             <button type="button" onClick={() => setModal('settings')} className="mobile-setting-btn" aria-label={t.nav.settings}>
               <Settings size={16} />
             </button>
@@ -595,7 +585,7 @@ function SplashScreen({ onDone }) {
 function App() {
   const [path, setPath] = useState(getPath());
   const [theme, setThemeState] = useState(() => localStorage.getItem('iim-theme') || 'dark');
-  const [language, setLanguage] = useState(() => localStorage.getItem('iim-language') || 'id');
+  const [language, setLanguage] = useState('id');
   const swipeRef = React.useRef({ x: 0, y: 0, t: 0 });
   // Always show splash on every full page refresh/reload.
   // It only closes for the current React session after the user clicks/presses a key.
@@ -618,10 +608,9 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    const applyLanguage = () => setLanguage(localStorage.getItem('iim-language') || 'id');
+    const applyLanguage = () => setLanguage('id');
     window.addEventListener('storage', applyLanguage);
-    window.addEventListener('iim-language-change', applyLanguage);
-    return () => { window.removeEventListener('storage', applyLanguage); window.removeEventListener('iim-language-change', applyLanguage); };
+    return () => { window.removeEventListener('storage', applyLanguage); };
   }, []);
 
   useEffect(() => {

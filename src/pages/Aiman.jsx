@@ -282,7 +282,8 @@ export default function Aiman() {
             <button
               type="button"
               onClick={() => setCallOpen(true)}
-              className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-bold text-white/80 transition hover:border-iim-gold hover:text-iim-gold sm:inline-flex"
+              className="aiman-header-call-button hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-bold text-white/80 transition hover:border-iim-gold hover:text-iim-gold sm:inline-flex"
+              aria-label="Telepon AIMAN"
             >
               <PhoneCall size={14} />
               <span>Telepon AIMAN</span>

@@ -133,6 +133,57 @@ const positiveThemeKeywords = [
   'redemption', 'gratitude', 'teacher', 'journey', 'inspire', 'inspirational', 'kindness'
 ];
 
+const islamicPresentationKeywords = [
+  'islam', 'islamic', 'muslim', 'dakwah', 'quran', 'qur an', 'hadith', 'hadis', 'allah',
+  'hajj', 'haji', 'pilgrimage', 'ramadan', 'mosque', 'masjid', 'imam', 'prayer', 'shalat',
+  'salah', 'pesantren', 'kiai', 'kyai', 'ustad', 'ustaz', 'ulama', 'hijrah', 'taubat',
+  'ikhlas', 'iman', 'faith', 'spiritual', 'religion', 'religious', 'azhar', 'sufi',
+  'sermon', 'preacher', 'worship'
+];
+
+const safePresentationKeywords = [
+  'family', 'friendship', 'teacher', 'school', 'education', 'children', 'mother', 'father',
+  'kindness', 'charity', 'forgiveness', 'mercy', 'hope', 'gratitude', 'healing', 'redemption',
+  'sacrifice', 'inspirational', 'uplifting', 'sport', 'community', 'truth', 'honesty',
+  'courage', 'disability', 'paralympic', 'warm'
+];
+
+const sidangRiskKeywords = [
+  'suicide', 'prostitute', 'prostitution', 'lingerie', 'forbidden affair', 'affair', 'adultery',
+  'cult', 'terrorist', 'terrorism', 'murder', 'serial killer', 'horror', 'devil', 'satan',
+  'demon', 'explicit', 'sex', 'sexual', 'rape', 'drug', 'mafia', 'gang', 'revenge',
+  'brutal', 'blood', 'porn', 'jihad', 'holy war', 'war', 'wars', 'radical', 'extremism',
+  'extremist', 'unsettling', 'chilling', 'militant', 'conspiracy', 'conspiration',
+  'soldier', 'captivity', 'anti-terrorist', 'attacks'
+];
+
+const curatedIslamicTitleSignals = [
+  'cinta dalam ikhlas',
+  'ayat ayat cinta',
+  'ketika cinta bertasbih',
+  '99 cahaya',
+  'negeri 5 menara',
+  'sang kiai',
+  'sang pencerah',
+  'mencari hilal',
+  'emak ingin naik haji',
+  'di bawah lindungan ka bah',
+  'hafalan shalat delisa',
+  'surga yang tak dirindukan',
+  'assalamualaikum beijing',
+  'cahaya cinta pesantren',
+  'ajari aku islam',
+  'iqro',
+  'hayya',
+  'bulan terbelah',
+  'perempuan berkalung sorban',
+  'kiamat sudah dekat',
+  'tanda tanya',
+  'haji backpacker',
+  'tausiyah cinta',
+  'bid ah cinta'
+];
+
 const semanticMoodProfiles = {
   sedih: 'grief loss lonely sadness depression tears healing patience mercy hope acceptance family forgiveness kehilangan kecewa lelah sendiri sabar ikhlas pulih menerima ditenangkan dikuatkan',
   gelisah: 'anxiety fear panic overthinking uncertainty calm peace trust safety prayer surrender cemas takut resah pikiran ramai tenang tawakal aman perlindungan',
@@ -231,16 +282,17 @@ export function normalizeMovie(movie) {
 export const allMovies = movies.map(normalizeMovie);
 
 let semanticModel = null;
+const queryVectorCache = new Map();
 
 function getSemanticModel() {
   if (semanticModel) return semanticModel;
-  const docs = allMovies.map((movie) => tokenizeSemantic(`${movie.title} ${movie.genres} ${movie.overview} ${movie.caster} ${movie.mood}`));
+  const docs = allMovies.map((movie) => tokenizeSemantic(`${movie.title} ${movie.title} ${movie.genres} ${movie.overview} ${movie.caster} ${movie.mood}`));
   const df = new Map();
   docs.forEach((tokens) => {
     new Set(tokens).forEach((token) => df.set(token, (df.get(token) || 0) + 1));
   });
   const totalDocs = Math.max(1, docs.length);
-  const idf = new Map(Array.from(df.entries()).map(([token, count]) => [token, Math.log(1 + totalDocs / (1 + count))]));
+  const idf = new Map(Array.from(df.entries()).map(([token, count]) => [token, Math.log((1 + totalDocs) / (1 + count)) + 1]));
   const vectors = new Map();
   allMovies.forEach((movie, index) => vectors.set(movie.id, vectorizeTokens(docs[index], idf)));
   semanticModel = { idf, vectors };
@@ -253,7 +305,7 @@ function vectorizeTokens(tokens = [], idf = new Map()) {
   const length = Math.max(1, tokens.length);
   const vector = new Map();
   counts.forEach((count, token) => {
-    const tf = count / length;
+    const tf = (1 + Math.log(count)) / length;
     vector.set(token, tf * (idf.get(token) || 0.75));
   });
   return vector;
@@ -274,10 +326,26 @@ function cosineSimilarity(a = new Map(), b = new Map()) {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
+function getMoodQueryText(mood, query = '') {
+  const moodData = getMoodByKey(mood);
+  return [
+    semanticMoodProfiles[mood] || semanticMoodProfiles.hidayah,
+    moodKeywords[mood]?.join(' ') || '',
+    moodData?.description || '',
+    moodData?.reflection || '',
+    query
+  ].join(' ');
+}
+
 function semanticScore(movie, mood, query = '') {
   const model = getSemanticModel();
-  const profile = `${semanticMoodProfiles[mood] || ''} ${query}`;
-  const profileVector = vectorizeTokens(tokenizeSemantic(profile), model.idf);
+  const profile = getMoodQueryText(mood, query);
+  const cacheKey = `${mood}::${normalizeText(query)}`;
+  let profileVector = queryVectorCache.get(cacheKey);
+  if (!profileVector) {
+    profileVector = vectorizeTokens(tokenizeSemantic(profile), model.idf);
+    queryVectorCache.set(cacheKey, profileVector);
+  }
   const movieVector = model.vectors.get(movie.id);
   return cosineSimilarity(movieVector, profileVector);
 }
@@ -340,6 +408,30 @@ function keywordScore(text, keywords = [], weight = 1) {
   return keywords.reduce((score, keyword) => score + (text.includes(keyword) ? weight : 0), 0);
 }
 
+function getPresentationPriorityScore(movie) {
+  const normalizedTitle = normalizeText(movie.title);
+  const text = normalizeText(`${movie.title} ${movie.genres} ${movie.overview} ${movie.mood} ${movie.caster}`);
+  const curatedTitle = curatedIslamicTitleSignals.some((title) => normalizedTitle.includes(title));
+  const islamicSignals = Math.min(6, keywordScore(text, islamicPresentationKeywords, 1));
+  const safeSignals = Math.min(5, keywordScore(text, safePresentationKeywords, 1));
+  const riskSignals = Math.min(6, keywordScore(text, sidangRiskKeywords, 1));
+
+  let score = 0;
+  if (curatedTitle) score += 90;
+  score += islamicSignals * 18;
+  score += safeSignals * 7;
+  score -= riskSignals * 22;
+
+  if (movie.mood === 'hidayah') score += 10;
+  if (movie.genreList.includes('Family')) score += 8;
+  if (movie.genreList.includes('Documentary')) score += 5;
+  if (movie.genreList.includes('Horror')) score -= 32;
+  if (movie.genreList.includes('Crime')) score -= 10;
+  if (movie.genreList.includes('Thriller')) score -= 28;
+
+  return score;
+}
+
 function personalizeScore(movie, selectedMood = '') {
   const { topMood, favorites } = getActiveAccountSignals();
   let score = 0;
@@ -368,12 +460,12 @@ export function scoreMovie(movie, selectedMood = '', options = {}) {
 
   let score = 0;
   if (!selectedMood) score += 5;
-  if (movie.mood === mood) score += 42;
+  if (movie.mood === mood) score += 28;
   if (String(movie.originalMood || '').toLowerCase().includes(mood)) score += 12;
-  score += keywordScore(text, moodKeywords[mood], 4.5);
+  score += keywordScore(text, moodKeywords[mood], 3.2);
   score += keywordScore(text, positiveThemeKeywords, 2.1);
-  score += semantic * 28;
-  score += genreAffinity * 12;
+  score += semantic * 64;
+  score += genreAffinity * 10;
   score += bayesianQuality * 18;
   score += ratingValue * 8;
   score += confidence * 11;
@@ -384,6 +476,7 @@ export function scoreMovie(movie, selectedMood = '', options = {}) {
   score += movie.hasTrailer ? 2 : -1.5;
   score += movie.overview && movie.overview.length > 80 ? 3 : -3;
   score += personalizeScore(movie, selectedMood);
+  if (options.presentationPriority) score += getPresentationPriorityScore(movie);
 
   if (options.genre && movie.genres.toLowerCase().includes(String(options.genre).toLowerCase())) score += 10;
   if (options.caster && movie.caster.toLowerCase().includes(String(options.caster).toLowerCase())) score += 10;

@@ -68,6 +68,7 @@ function loadJsonFile(filePath, fallback) {
 
 const AIMAN_KNOWLEDGE = loadJsonFile(path.join(__dirname, 'data', 'aiman-knowledge.json'), {});
 const ISLAMIC_KNOWLEDGE = loadJsonFile(path.join(__dirname, 'data', 'islamic-knowledge.json'), []);
+const DALIL_RAG_KNOWLEDGE = loadJsonFile(path.join(__dirname, 'data', 'dalil-rag.json'), []);
 
 // Serve React build first when available. Keep old public folder as fallback/assets.
 if (fs.existsSync(distPath)) {
@@ -317,6 +318,31 @@ try {
 } catch (e) {
   ragLoadError = e.message;
   console.error('[ERROR] RAG load:', e.message);
+}
+
+const DALIL_RAG_DOCS = (DALIL_RAG_KNOWLEDGE || []).map((d) => ({
+  id: d.id || d.ref || '',
+  ref: d.ref || '',
+  type: d.type || 'text',
+  topic: d.topic || '',
+  moods: Array.isArray(d.moods) ? d.moods : [],
+  keywords: Array.isArray(d.keywords) ? d.keywords : [],
+  arab: d.arab || '',
+  text: d.text || '',
+  explanation: d.explanation || '',
+  grade: d.grade || '',
+  source: d.source || '',
+  search: normalize(`${d.ref || ''} ${d.type || ''} ${d.topic || ''} ${d.text || ''} ${d.explanation || ''} ${(d.keywords || []).join(' ')} ${(d.moods || []).join(' ')}`)
+}));
+
+if (DALIL_RAG_DOCS.length) {
+  const existingRefs = new Set(RAG_DOCS.map((doc) => `${doc.type}:${doc.ref}:${doc.text}`));
+  for (const doc of DALIL_RAG_DOCS) {
+    const key = `${doc.type}:${doc.ref}:${doc.text}`;
+    if (!existingRefs.has(key)) RAG_DOCS.push(doc);
+  }
+  ragLoadReady = true;
+  console.log(`[OK] ${DALIL_RAG_DOCS.length} curated dalil RAG documents loaded`);
 }
 
 const STOPWORDS = new Set([
@@ -710,6 +736,33 @@ function buildDalilCards(topicData, preferHadith = false) {
   return cards;
 }
 
+function buildDalilCardsFromRag(ragDocs = [], preferHadith = false) {
+  const cards = ragDocs
+    .filter((doc) => doc.type === 'quran' || doc.type === 'hadith')
+    .map((doc) => ({
+      type: doc.type,
+      label: doc.type === 'hadith' ? 'Hadis' : "Al-Qur'an",
+      title: doc.ref || (doc.type === 'hadith' ? 'Hadis' : 'Ayat'),
+      arabic: doc.arab || '',
+      translation: doc.text || '',
+      source: doc.source || doc.ref || '',
+      grade: doc.grade || '',
+      explanation: doc.explanation || ''
+    }));
+  const unique = [];
+  const seen = new Set();
+  for (const card of cards) {
+    const key = `${card.type}:${card.title}:${card.translation}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(card);
+  }
+  if (preferHadith) {
+    unique.sort((a, b) => (a.type === 'hadith' ? -1 : 0) - (b.type === 'hadith' ? -1 : 0));
+  }
+  return unique.slice(0, 4);
+}
+
 function buildIslamicReply(message = '', intent = 'dalil_question') {
   const topicData = findIslamicTopic(message);
   const preferHadith = intent === 'hadith_question' || isHadithIntent(message);
@@ -930,11 +983,58 @@ function retrieveRag(message = '', mood = 'tenang', limit = 5) {
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map(({ doc }) => ({
+      id: doc.id || `${doc.type}:${doc.ref}`,
       ref: doc.ref,
       type: doc.type,
       arab: doc.arab,
-      text: doc.text.length > 420 ? `${doc.text.slice(0, 420)}...` : doc.text
+      text: doc.text.length > 420 ? `${doc.text.slice(0, 420)}...` : doc.text,
+      explanation: doc.explanation || '',
+      grade: doc.grade || '',
+      source: doc.source || ''
     }));
+}
+
+function searchDalilRag(query = '', mood = 'tenang', limit = 8, excludeId = '') {
+  const safeMood = mood || detectMood(query || '');
+  const terms = [...new Set(tokensOf(`${query} ${(MOOD_PROFILES[safeMood]?.rag || []).join(' ')}`))]
+    .filter((term) => term.length > 2 && !STOPWORDS.has(term));
+  const preferHadith = isHadithIntent(query);
+  const curated = DALIL_RAG_DOCS
+    .map((doc) => {
+      let score = 0;
+      if ((doc.moods || []).includes(safeMood)) score += 28;
+      if (preferHadith && doc.type === 'hadith') score += 18;
+      if (isDalilIntent(query) && doc.type === 'quran') score += 4;
+      terms.forEach((term) => {
+        if (doc.search.includes(term)) score += term.length > 5 ? 4 : 2;
+      });
+      return { ...doc, score };
+    })
+    .filter((doc) => doc.score > 0)
+    .sort((a, b) => b.score - a.score || (a.type === 'quran' ? -1 : 1));
+  const fallback = retrieveRag(`${query} ${(MOOD_PROFILES[safeMood]?.rag || []).join(' ')}`, safeMood, Math.max(limit * 3, 12))
+    .filter((doc) => doc.type === 'quran' || doc.type === 'hadith');
+  const docs = [...curated, ...fallback];
+  const seen = new Set();
+  const filtered = [];
+  for (const doc of docs) {
+    const id = `${doc.type}:${doc.ref}:${doc.text}`;
+    if (excludeId && (excludeId === id || excludeId === doc.ref)) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    filtered.push({
+      id: doc.id || id,
+      ref: doc.ref,
+      type: doc.type,
+      arab: doc.arab,
+      text: doc.text,
+      explanation: doc.explanation || '',
+      grade: doc.grade || '',
+      source: doc.source || ''
+    });
+    if (filtered.length >= limit) break;
+  }
+  return filtered;
 }
 
 function recommendedFilms(mood) {
@@ -1192,6 +1292,23 @@ app.get('/api/rag/search', async (req, res) => {
   const mood = detectMood(q);
   res.json({ mood, results: await getRagDocuments(q, mood, 8) });
 });
+
+app.get('/api/dalil/search', (req, res) => {
+  const q = safeString(req.query.q, '', 1000);
+  const mood = safeString(req.query.mood || detectMood(q), 'tenang', 32);
+  const limit = safeInteger(req.query.limit, 8, 1, 20);
+  res.json({ ok: true, mood, results: searchDalilRag(q, mood, limit) });
+});
+
+app.get('/api/dalil/random', (req, res) => {
+  const q = safeString(req.query.q, '', 1000);
+  const mood = safeString(req.query.mood || detectMood(q), 'tenang', 32);
+  const exclude = safeString(req.query.exclude, '', 160);
+  const candidates = searchDalilRag(q, mood, 12, exclude);
+  const item = candidates.length ? candidates[Math.floor(Math.random() * candidates.length)] : null;
+  res.json({ ok: true, mood, result: item });
+});
+
 function healthCheck(req, res) {
   res.json(serviceStats());
 }
@@ -1233,6 +1350,11 @@ app.post('/api/chat', async (req, res) => {
   const ragDocs = await getRagDocuments(cleanMessage, mood, 5);
   const films = await getRecommendedFilms(mood, 3);
   const metadata = buildIntentMetadata(aimanIntent, cleanMessage);
+  const preferHadithCards = aimanIntent === 'hadith_question' || isHadithIntent(cleanMessage);
+  const ragDalilCards = buildDalilCardsFromRag(ragDocs, preferHadithCards);
+  const mergedDalilCards = [...(metadata.dalilCards || []), ...ragDalilCards]
+    .filter((card, index, list) => list.findIndex((item) => `${item.type}:${item.title}:${item.translation}` === `${card.type}:${card.title}:${card.translation}`) === index)
+    .slice(0, 5);
   const knowledgeOnlyIntents = new Set([
     'creator_question',
     'uika_question',
@@ -1272,7 +1394,7 @@ app.post('/api/chat', async (req, res) => {
       rag: ragDocs,
       films: responseFilms,
       cards: metadata.cards || [],
-      dalilCards: metadata.dalilCards || [],
+      dalilCards: mergedDalilCards,
       sources: metadata.sources || []
     });
   }
@@ -1290,7 +1412,7 @@ app.post('/api/chat', async (req, res) => {
     rag: ragDocs,
     films: responseFilms,
     cards: metadata.cards || [],
-    dalilCards: metadata.dalilCards || [],
+    dalilCards: mergedDalilCards,
     sources: metadata.sources || []
   });
 });
