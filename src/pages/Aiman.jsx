@@ -168,7 +168,8 @@ export default function Aiman() {
   }, [messages, loading]);
 
   useEffect(() => {
-    textareaRef.current?.focus();
+    const isMobileViewport = window.matchMedia?.('(max-width: 767px)').matches;
+    if (!isMobileViewport) textareaRef.current?.focus();
   }, []);
 
   async function sendToAiman(text, { clearInput = false, voiceMode = false } = {}) {

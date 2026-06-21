@@ -16,7 +16,7 @@ export default function FilmCard({ movie, mood, animationDelay = 0 }) {
       <LazyPoster
         src={movie.poster}
         alt={movie.title}
-        className="film-poster-hover relative aspect-[2/3] overflow-hidden bg-iim-sand/30"
+        className="film-poster-hover film-poster-a4 relative overflow-hidden bg-iim-sand/30"
         imgClassName="transition duration-700 ease-out group-hover:scale-110"
       >
         <div className="film-poster-shine" aria-hidden="true" />

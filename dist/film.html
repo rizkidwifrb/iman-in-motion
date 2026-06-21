@@ -7074,6 +7074,165 @@
   <link rel="stylesheet" href="iim-mobile-clean.css" />
   <link rel="stylesheet" href="iim-mobile-final.css" />
   <link rel="stylesheet" href="iim-nav-sync.css" />
+  <style>
+    body[data-page="film"] .grid{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:34px 26px!important;align-items:start!important}
+    body[data-page="film"] .card{overflow:hidden!important;border-radius:22px!important}
+    body[data-page="film"] .poster{aspect-ratio:210/297!important;height:auto!important}
+    body[data-page="film"] .poster img{width:100%!important;height:100%!important;object-fit:cover!important}
+    body[data-page="film"] .info{min-height:82px!important;padding:12px 12px 14px!important}
+    body[data-page="film"] .info h3{display:-webkit-box!important;min-height:2.55em!important;max-height:2.55em!important;overflow:hidden!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;font-size:14px!important;line-height:1.25!important;letter-spacing:0!important}
+    body[data-page="film"] .detail img{aspect-ratio:210/297!important;max-height:min(72vh,620px)!important;object-fit:cover!important}
+    @media(max-width:1180px){body[data-page="film"] .grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:32px 22px!important}}
+    @media(max-width:760px){body[data-page="film"] .grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:28px 18px!important;padding-left:20px!important;padding-right:20px!important}body[data-page="film"] .info{min-height:76px!important;padding:10px 10px 12px!important}body[data-page="film"] .info h3{font-size:clamp(12px,3.35vw,15px)!important}body[data-page="film"] .info p,body[data-page="film"] .chips{display:none!important}}
+    @media(max-width:380px){body[data-page="film"] .grid{gap:24px 14px!important;padding-left:16px!important;padding-right:16px!important}body[data-page="film"] .info h3{font-size:12px!important}}
+    /* Sidang revision: Film page defaults to a fully light theme. This block
+       neutralizes older dark header/mobile/card overrides loaded above. */
+    body[data-page="film"]{
+      --bg:#fff8ea!important;
+      --panel:rgba(255,255,255,.84)!important;
+      --panel2:rgba(255,255,255,.94)!important;
+      --line:rgba(122,78,45,.16)!important;
+      --text:#2b2118!important;
+      --muted:rgba(75,53,34,.72)!important;
+      --teal:#0A7D78!important;
+      --teal2:#0A7D78!important;
+      --orange:#D07030!important;
+      --peach:#A85B20!important;
+      --shadow:0 20px 54px rgba(122,78,45,.12)!important;
+      background:
+        radial-gradient(820px 420px at 18% 0%,rgba(255,214,156,.42),transparent 64%),
+        radial-gradient(760px 380px at 88% 10%,rgba(10,125,120,.12),transparent 62%),
+        linear-gradient(180deg,#fffaf1 0%,#f8eedc 58%,#fff8ea 100%)!important;
+      color:var(--text)!important;
+    }
+    body[data-page="film"] .header,
+    body[data-page="film"] .iim-unified-header,
+    body[data-page="film"] .header.iim-unified-header{
+      background:rgba(255,250,241,.92)!important;
+      border-bottom:1px solid rgba(122,78,45,.14)!important;
+      color:var(--text)!important;
+      box-shadow:0 10px 30px rgba(122,78,45,.08)!important;
+    }
+    body[data-page="film"] .logo-wrap,
+    body[data-page="film"] .iim-unified-header .logo-wrap{
+      color:var(--text)!important;
+    }
+    body[data-page="film"] .logo-wrap b,
+    body[data-page="film"] .iim-unified-header .logo-wrap b,
+    body[data-page="film"] .nav a.active,
+    body[data-page="film"] .nav a:hover{
+      color:var(--peach)!important;
+    }
+    body[data-page="film"] .nav,
+    body[data-page="film"] .iim-unified-header .nav,
+    body[data-page="film"] .nav a,
+    body[data-page="film"] .iim-unified-header .nav a{
+      color:rgba(75,53,34,.74)!important;
+    }
+    body[data-page="film"] .menu-toggle,
+    body[data-page="film"] #menuToggle.menu-toggle{
+      background:rgba(255,255,255,.82)!important;
+      border-color:rgba(122,78,45,.18)!important;
+      color:var(--text)!important;
+    }
+    body[data-page="film"] .hero h1,
+    body[data-page="film"] .info h3,
+    body[data-page="film"] .detail h2,
+    body[data-page="film"] .detail h3{
+      color:var(--text)!important;
+    }
+    body[data-page="film"] .hero p,
+    body[data-page="film"] .stats,
+    body[data-page="film"] .info p,
+    body[data-page="film"] .empty,
+    body[data-page="film"] #detail p{
+      color:var(--muted)!important;
+    }
+    body[data-page="film"] .toolbar,
+    body[data-page="film"] .card,
+    body[data-page="film"] .modal-card{
+      border-color:var(--line)!important;
+      background:linear-gradient(180deg,var(--panel2),var(--panel))!important;
+      color:var(--text)!important;
+      box-shadow:var(--shadow)!important;
+    }
+    body[data-page="film"] .card:hover{
+      border-color:rgba(208,112,48,.34)!important;
+      box-shadow:0 24px 58px rgba(122,78,45,.16)!important;
+    }
+    body[data-page="film"] .poster{
+      background:#efe0c7!important;
+    }
+    body[data-page="film"] .field label,
+    body[data-page="film"] .chip,
+    body[data-page="film"] .cast span{
+      color:var(--peach)!important;
+    }
+    body[data-page="film"] .field input,
+    body[data-page="film"] .field select{
+      background:rgba(255,255,255,.84)!important;
+      border-color:rgba(122,78,45,.18)!important;
+      color:var(--text)!important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.64)!important;
+    }
+    body[data-page="film"] .field input::placeholder{
+      color:rgba(75,53,34,.52)!important;
+    }
+    body[data-page="film"] .field option{
+      background:#fff8ea!important;
+      color:var(--text)!important;
+    }
+    body[data-page="film"] .chip,
+    body[data-page="film"] .cast span{
+      background:rgba(208,112,48,.09)!important;
+      border-color:rgba(208,112,48,.18)!important;
+    }
+    body[data-page="film"] .modal{
+      background:rgba(255,250,241,.82)!important;
+      backdrop-filter:blur(12px)!important;
+    }
+    body[data-page="film"] .close{
+      background:rgba(255,255,255,.9)!important;
+      border-color:rgba(122,78,45,.18)!important;
+      color:var(--text)!important;
+    }
+    @media(max-width:860px){
+      body[data-page="film"] .nav.open,
+      body[data-page="film"] #mainNav.nav.open,
+      body[data-page="film"] .iim-unified-header .nav.open{
+        background:#fff8ea!important;
+        border-color:rgba(122,78,45,.16)!important;
+        box-shadow:0 24px 70px rgba(122,78,45,.16)!important;
+      }
+      body[data-page="film"] .nav a,
+      body[data-page="film"] #mainNav.nav a,
+      body[data-page="film"] .iim-unified-header .nav a{
+        background:rgba(255,255,255,.76)!important;
+        border-color:rgba(122,78,45,.12)!important;
+        color:var(--text)!important;
+      }
+      body[data-page="film"] .nav a.active,
+      body[data-page="film"] #mainNav.nav a.active{
+        background:rgba(208,112,48,.11)!important;
+        border-color:rgba(208,112,48,.22)!important;
+        color:var(--peach)!important;
+      }
+    }
+    /* Sidang revision: render every header/title on the static film page in full caps. */
+    body[data-page="film"] header,
+    body[data-page="film"] header a,
+    body[data-page="film"] header button,
+    body[data-page="film"] h1,
+    body[data-page="film"] h2,
+    body[data-page="film"] h3,
+    body[data-page="film"] h4,
+    body[data-page="film"] h5,
+    body[data-page="film"] h6,
+    body[data-page="film"] .field label,
+    body[data-page="film"] .stats {
+      text-transform: uppercase!important;
+    }
+  </style>
 </head>
 <body data-page="film">
 <header class="header iim-unified-header">

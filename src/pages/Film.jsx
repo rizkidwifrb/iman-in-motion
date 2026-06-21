@@ -108,7 +108,7 @@ export default function Film() {
         <FilmGridSkeleton count={12} />
       ) : movies.length ? (
         <>
-          <div className="film-library-grid grid grid-cols-4 gap-2 md:gap-4">
+          <div className="film-library-grid grid">
             {visibleMovies.map((movie, index) => <FilmCard key={movie.id} movie={movie} mood={mood} animationDelay={(index % 12) * 35} />)}
           </div>
           {totalPages > 1 && (

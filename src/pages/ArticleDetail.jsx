@@ -266,7 +266,7 @@ export default function ArticleDetail({ path }) {
         <div className="grid gap-0 lg:grid-cols-[320px_1fr]">
           <aside className="border-b border-iim-brown/10 p-5 dark:border-white/10 lg:border-b-0 lg:border-r">
             {article.poster && (
-              <img src={article.poster} alt={copy.title} className="mx-auto aspect-[2/3] w-full max-w-[250px] rounded-3xl object-cover shadow-premium" />
+              <img src={article.poster} alt={copy.title} className="mx-auto aspect-[210/297] w-full max-w-[250px] rounded-3xl object-cover shadow-premium" />
             )}
             <div className="mt-5 space-y-3 text-sm leading-7 text-iim-brown dark:text-iim-sand">
               <p><b className="text-iim-coffee dark:text-iim-cream">Film:</b> {article.movieTitle || article.title}</p>

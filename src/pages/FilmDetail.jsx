@@ -107,9 +107,9 @@ export default function FilmDetail({ path }) {
       <div className="grid gap-8 lg:grid-cols-[0.78fr_1.22fr]">
         <div className="premium-card overflow-hidden p-3">
           {movie.poster ? (
-            <img src={movie.poster} alt={movie.title} className="h-full min-h-[520px] w-full rounded-[1.6rem] object-cover" />
+            <img src={movie.poster} alt={movie.title} className="film-detail-poster w-full rounded-[1.6rem] object-cover" />
           ) : (
-            <div className="grid min-h-[520px] place-items-center rounded-[1.6rem] bg-iim-coffee/10 text-sm font-black">Poster belum tersedia</div>
+            <div className="film-detail-poster grid place-items-center rounded-[1.6rem] bg-iim-coffee/10 text-sm font-black">Poster belum tersedia</div>
           )}
         </div>
 

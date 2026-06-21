@@ -9331,3 +9331,763 @@ img[loading="lazy"] {
     flex: 1 1 20% !important;
   }
 }
+
+/* v44: prevent mobile browsers from auto-zooming AIMAN while typing */
+@media (max-width: 767px) {
+  .is-aiman-route,
+  .is-aiman-route .aiman-page,
+  .is-aiman-route .aiman-chat-panel {
+    -webkit-text-size-adjust: 100% !important;
+    text-size-adjust: 100% !important;
+  }
+
+  .is-aiman-route .aiman-input-wrap textarea,
+  .aiman-page .aiman-input-wrap textarea {
+    min-height: 48px !important;
+    font-size: 16px !important;
+    line-height: 1.45 !important;
+    touch-action: manipulation !important;
+    transform: translateZ(0);
+  }
+
+  .is-aiman-route .aiman-input-wrap textarea::placeholder,
+  .aiman-page .aiman-input-wrap textarea::placeholder {
+    font-size: 16px !important;
+  }
+}
+
+/* v45: film posters use A4 ratio with enough breathing room for titles */
+.film-poster-a4,
+.film-card .film-poster-a4,
+.film-card-readable .film-poster-a4,
+.film-card .lazy-poster-wrap.film-poster-a4 {
+  aspect-ratio: 210 / 297 !important;
+  width: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
+}
+
+.film-card .lazy-poster-img,
+.film-poster-a4 .lazy-poster-img,
+.film-poster-a4 img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.film-card-readable,
+.film-library-grid .film-card {
+  height: auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.film-library-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 28px 18px !important;
+  align-items: start !important;
+}
+
+.film-library-grid .film-card-readable,
+.film-library-grid .film-card {
+  border-radius: 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(5, 8, 8, 0.78) !important;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22) !important;
+}
+
+.film-library-grid .film-card-readable .lazy-poster-wrap,
+.film-library-grid .film-poster-hover {
+  border-radius: 20px 20px 0 0 !important;
+  box-shadow: none !important;
+}
+
+.film-library-grid .film-card-readable-body,
+.film-library-grid .film-card-body {
+  min-height: 76px !important;
+  padding: 10px 10px 12px !important;
+  background: rgba(5, 8, 8, 0.92) !important;
+}
+
+.film-library-grid .film-title,
+.film-library-grid .film-card-readable .film-title {
+  display: -webkit-box !important;
+  min-height: 2.55em !important;
+  max-height: 2.55em !important;
+  overflow: hidden !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  color: #f6eedc !important;
+  font-size: clamp(0.78rem, 3.35vw, 0.96rem) !important;
+  font-weight: 900 !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0 !important;
+  text-align: left !important;
+}
+
+.film-library-grid .film-year {
+  color: rgba(246, 238, 220, 0.78) !important;
+  font-size: 0.68rem !important;
+  line-height: 1.2 !important;
+}
+
+.film-library-grid .film-genre,
+.film-library-grid .film-reason {
+  display: none !important;
+}
+
+.film-library-grid .favorite-button {
+  width: 31px !important;
+  height: 31px !important;
+  border-radius: 999px !important;
+}
+
+.film-library-grid .favorite-button svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+
+.film-library-grid .film-rating,
+.film-library-grid .film-mood,
+.film-library-grid .film-poster-hover .absolute.bottom-2.right-2 {
+  display: none !important;
+}
+
+.skeleton-film-card .skeleton-poster {
+  aspect-ratio: 210 / 297 !important;
+  height: auto !important;
+}
+
+.film-detail-poster {
+  aspect-ratio: 210 / 297 !important;
+  height: auto !important;
+  max-height: min(72vh, 620px) !important;
+  object-fit: cover !important;
+}
+
+.account-favorite-card .skeleton-favorite-poster,
+.account-favorites-grid .lazy-poster-wrap,
+.account-favorites-grid .aspect-\[2\/3\] {
+  aspect-ratio: 210 / 297 !important;
+}
+
+@media (min-width: 640px) {
+  .film-library-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 30px 22px !important;
+  }
+
+  .film-library-grid .film-card-readable-body,
+  .film-library-grid .film-card-body {
+    min-height: 96px !important;
+    padding: 13px !important;
+  }
+
+  .film-library-grid .film-title,
+  .film-library-grid .film-card-readable .film-title {
+    font-size: 0.98rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .film-library-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 34px 26px !important;
+  }
+
+  .film-library-grid .film-card-readable-body,
+  .film-library-grid .film-card-body {
+    min-height: 122px !important;
+    padding: 15px !important;
+  }
+
+  .film-library-grid .film-title,
+  .film-library-grid .film-card-readable .film-title {
+    font-size: 1rem !important;
+  }
+
+  .film-library-grid .film-genre,
+  .film-library-grid .film-reason {
+    display: block !important;
+  }
+
+  .film-library-grid .film-genre {
+    margin-top: 0.45rem !important;
+    font-size: 0.76rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .film-library-grid .film-reason {
+    margin-top: 0.65rem !important;
+    font-size: 0.82rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .film-library-grid .film-rating,
+  .film-library-grid .film-mood,
+  .film-library-grid .film-poster-hover .absolute.bottom-2.right-2 {
+    display: block !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .film-library-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 36px 28px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .film-library-grid {
+    gap: 24px 14px !important;
+  }
+
+  .film-library-grid .film-card-readable-body,
+  .film-library-grid .film-card-body {
+    padding: 9px 8px 11px !important;
+  }
+
+  .film-library-grid .film-title,
+  .film-library-grid .film-card-readable .film-title {
+    font-size: 0.72rem !important;
+  }
+}
+
+/* v46: desktop home hero headline copy aligns left */
+@media (min-width: 1024px) {
+  .home-hero.container-page {
+    justify-items: stretch !important;
+    text-align: left !important;
+  }
+
+  .home-hero > div:first-child {
+    justify-self: start !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    text-align: left !important;
+  }
+
+  .home-hero .section-eyebrow,
+  .home-hero-title,
+  .home-hero-copy,
+  .home-hero-actions {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    text-align: left !important;
+  }
+
+  .home-hero-actions {
+    justify-content: flex-start !important;
+  }
+}
+
+/* v47: film page light-mode audit
+   Sidang revision: the default theme must read fully bright, even after older
+   dark film-card overrides above. Keep the selector narrow so Mood/AIMAN can
+   retain their intentional cinematic layouts. */
+:root:not(.dark) .film-filter-card,
+:root:not(.dark) .film-mood-note,
+:root:not(.dark) .film-library-grid .film-card-readable,
+:root:not(.dark) .film-library-grid .film-card,
+:root:not(.dark) .skeleton-film-card {
+  border-color: rgba(122, 78, 45, 0.14) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #2b2118 !important;
+  box-shadow: 0 18px 48px rgba(122, 78, 45, 0.11) !important;
+}
+
+:root:not(.dark) .film-filter-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 248, 234, 0.86)) !important;
+}
+
+:root:not(.dark) .film-library-grid .film-card-readable-body,
+:root:not(.dark) .film-library-grid .film-card-body,
+:root:not(.dark) .film-card-readable-body {
+  background: linear-gradient(180deg, #fffaf1 0%, #f8edda 100%) !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .film-library-grid .film-title,
+:root:not(.dark) .film-library-grid .film-card-readable .film-title,
+:root:not(.dark) .film-card-readable .film-title {
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .film-library-grid .film-year,
+:root:not(.dark) .film-library-grid .film-genre,
+:root:not(.dark) .film-library-grid .film-reason,
+:root:not(.dark) .film-card-readable .film-year,
+:root:not(.dark) .film-card-readable .film-genre,
+:root:not(.dark) .film-card-readable .film-reason,
+:root:not(.dark) .film-result-bar p {
+  color: rgba(75, 53, 34, 0.78) !important;
+}
+
+:root:not(.dark) .film-card:hover {
+  box-shadow: 0 24px 58px rgba(122, 78, 45, 0.16), 0 0 30px rgba(211, 163, 72, 0.18) !important;
+}
+
+:root:not(.dark) .film-poster-hover::after {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0) 48%, rgba(255, 248, 234, 0.34) 100%),
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.26), transparent 34%) !important;
+}
+
+:root:not(.dark) .film-rating,
+:root:not(.dark) .film-poster-hover .absolute.bottom-2.right-2 {
+  background: rgba(255, 250, 241, 0.88) !important;
+  color: #2b2118 !important;
+  border: 1px solid rgba(122, 78, 45, 0.16) !important;
+  box-shadow: 0 8px 22px rgba(122, 78, 45, 0.14) !important;
+}
+
+:root:not(.dark) .poster-skeleton,
+:root:not(.dark) .skeleton-shape,
+:root:not(.dark) .skeleton-card,
+:root:not(.dark) .skeleton-poster,
+:root:not(.dark) .skeleton-line {
+  background: rgba(122, 78, 45, 0.08) !important;
+}
+
+:root:not(.dark) .poster-skeleton::after,
+:root:not(.dark) .skeleton-shape::after,
+:root:not(.dark) .skeleton-poster::after,
+:root:not(.dark) .skeleton-line::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.58), transparent) !important;
+}
+
+/* v48: light default must include the first visible screen */
+:root:not(.dark) .splash-screen-lite {
+  background:
+    radial-gradient(circle at 14% 22%, rgba(10, 125, 120, 0.12), transparent 22rem),
+    radial-gradient(circle at 88% 70%, rgba(211, 163, 72, 0.2), transparent 24rem),
+    linear-gradient(145deg, #fffaf1 0%, #f7edda 58%, #fff8ea 100%) !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .splash-logo-wrap-lite {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(122, 78, 45, 0.14) !important;
+  box-shadow: 0 16px 42px rgba(122, 78, 45, 0.12) !important;
+}
+
+:root:not(.dark) .splash-title-lite {
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .splash-tap-hint {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-color: rgba(122, 78, 45, 0.16) !important;
+  color: rgba(43, 33, 24, 0.78) !important;
+}
+
+:root:not(.dark) .splash-screen-lite .splash-orb-one {
+  background: radial-gradient(circle, rgba(10, 125, 120, 0.18), rgba(10, 125, 120, 0) 70%) !important;
+}
+
+:root:not(.dark) .splash-screen-lite .splash-orb-two {
+  background: radial-gradient(circle, rgba(211, 163, 72, 0.24), rgba(211, 163, 72, 0) 72%) !important;
+}
+
+/* v49: remaining light-mode controls */
+:root:not(.dark) .desktop-menu .desktop-menu-link.bg-iim-coffee {
+  background: rgba(255, 255, 255, 0.76) !important;
+  border: 1px solid rgba(122, 78, 45, 0.16) !important;
+  color: #8b4d1e !important;
+  box-shadow: 0 10px 28px rgba(122, 78, 45, 0.1) !important;
+}
+
+:root:not(.dark) .favorite-button {
+  border-color: rgba(122, 78, 45, 0.18) !important;
+  background: rgba(255, 250, 241, 0.84) !important;
+  color: #7a4e2d !important;
+  box-shadow: 0 10px 24px rgba(122, 78, 45, 0.12) !important;
+}
+
+:root:not(.dark) .favorite-button:hover,
+:root:not(.dark) .favorite-button.active {
+  background: #f5c45c !important;
+  color: #2b2118 !important;
+  border-color: rgba(211, 163, 72, 0.72) !important;
+}
+
+@media (max-width: 767px) {
+  :root:not(.dark) body:not(.route-aiman) .mobile-bottom-nav,
+  :root:not(.dark) .mobile-bottom-nav {
+    background: rgba(255, 250, 241, 0.94) !important;
+    border-color: rgba(122, 78, 45, 0.14) !important;
+    box-shadow: 0 16px 38px rgba(122, 78, 45, 0.16) !important;
+  }
+
+  :root:not(.dark) .mobile-bottom-nav-item,
+  :root:not(.dark) .mobile-bottom-nav a.mobile-bottom-nav-item {
+    color: rgba(75, 53, 34, 0.72) !important;
+  }
+
+  :root:not(.dark) .mobile-bottom-nav-item.active,
+  :root:not(.dark) .mobile-bottom-nav-item:hover {
+    background: rgba(211, 163, 72, 0.2) !important;
+    color: #2b2118 !important;
+  }
+}
+
+/* v50: mobile light-mode hard stop for legacy dark app shell */
+@media (max-width: 767px) {
+  :root:not(.dark) body::before {
+    background:
+      radial-gradient(circle at 18% 0%, rgba(10, 125, 120, 0.1), transparent 20rem),
+      radial-gradient(circle at 100% 24%, rgba(211, 163, 72, 0.2), transparent 18rem),
+      linear-gradient(180deg, #fffaf1 0%, #f7edda 48%, #fff8ea 100%) !important;
+  }
+
+  :root:not(.dark) .mobile-app-topbar {
+    border-bottom-color: rgba(122, 78, 45, 0.14) !important;
+    background: rgba(255, 250, 241, 0.94) !important;
+    background-image: none !important;
+    box-shadow: 0 12px 30px rgba(122, 78, 45, 0.1) !important;
+  }
+
+  :root:not(.dark) .mobile-brand-lockup,
+  :root:not(.dark) .mobile-brand-lockup p,
+  :root:not(.dark) .mobile-brand-lockup span {
+    color: #2b2118 !important;
+  }
+
+  :root:not(.dark) .mobile-hamburger-btn,
+  :root:not(.dark) .mobile-google-btn,
+  :root:not(.dark) .mobile-setting-btn {
+    border-color: rgba(122, 78, 45, 0.16) !important;
+    background: rgba(255, 255, 255, 0.74) !important;
+    color: #2b2118 !important;
+    box-shadow: 0 8px 22px rgba(122, 78, 45, 0.1) !important;
+  }
+
+  :root:not(.dark) .mobile-google-btn {
+    background: rgba(211, 163, 72, 0.36) !important;
+  }
+}
+
+/* v51: full light audit for Home, Mood, AIMAN, and Account/Profile */
+:root:not(.dark) .btn-primary {
+  border: 1px solid rgba(122, 78, 45, 0.14) !important;
+  background: linear-gradient(135deg, #f4c96c, #d3a348) !important;
+  color: #2b2118 !important;
+  box-shadow: 0 14px 34px rgba(122, 78, 45, 0.14) !important;
+}
+
+:root:not(.dark) .btn-primary:hover {
+  background: linear-gradient(135deg, #f7d887, #d9ad55) !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .home-preview-card,
+:root:not(.dark) .home-preview-card .relative.z-10,
+:root:not(.dark) .home-preview-card .rounded-\[1\.75rem\] {
+  border-color: rgba(122, 78, 45, 0.14) !important;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(211, 163, 72, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 248, 234, 0.88)) !important;
+  color: #2b2118 !important;
+  box-shadow: 0 22px 60px rgba(122, 78, 45, 0.12) !important;
+}
+
+:root:not(.dark) .home-preview-card > .absolute,
+:root:not(.dark) .home-preview-card .absolute.inset-0 {
+  background: transparent !important;
+}
+
+:root:not(.dark) .home-preview-card .text-iim-cream,
+:root:not(.dark) .home-preview-card .text-iim-sand,
+:root:not(.dark) .home-preview-card p,
+:root:not(.dark) .home-preview-card h3 {
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .home-preview-card .text-iim-gold,
+:root:not(.dark) .home-preview-card .section-eyebrow {
+  color: #9a5b22 !important;
+}
+
+:root:not(.dark) .home-preview-card .bg-white\/5,
+:root:not(.dark) .home-preview-card .border,
+:root:not(.dark) .home-preview-card .mood-picker-card,
+:root:not(.dark) .home-preview-card .mood-picker-card-mini {
+  border-color: rgba(122, 78, 45, 0.14) !important;
+  background: rgba(255, 255, 255, 0.66) !important;
+  color: #2b2118 !important;
+  box-shadow: none !important;
+}
+
+:root:not(.dark) .home-preview-card .mood-icon-shell {
+  border: 1px solid rgba(122, 78, 45, 0.12) !important;
+  background: rgba(211, 163, 72, 0.16) !important;
+  color: #7a4e2d !important;
+}
+
+:root:not(.dark) .home-preview-card .bg-iim-gold\/10,
+:root:not(.dark) .home-preview-card .border-iim-gold\/20 {
+  border-color: rgba(211, 163, 72, 0.28) !important;
+  background: rgba(211, 163, 72, 0.12) !important;
+}
+
+:root:not(.dark) .mood-shell {
+  --mood-bg:
+    radial-gradient(900px 520px at 20% -10%, rgba(211, 163, 72, 0.22), transparent 62%),
+    radial-gradient(760px 480px at 96% 6%, rgba(10, 125, 120, 0.1), transparent 58%),
+    #fff8ea !important;
+  background: var(--mood-bg) !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .mood-sidebar {
+  border-right-color: rgba(122, 78, 45, 0.14) !important;
+  background: rgba(255, 250, 241, 0.9) !important;
+  color: #2b2118 !important;
+  box-shadow: 12px 0 36px rgba(122, 78, 45, 0.08) !important;
+}
+
+:root:not(.dark) .mood-sidebar .text-white,
+:root:not(.dark) .mood-sidebar .text-white\/70,
+:root:not(.dark) .mood-sidebar .text-white\/55 {
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .mood-sidebar a.rounded-full,
+:root:not(.dark) .mood-menu-button,
+:root:not(.dark) .mood-side-button {
+  border-color: rgba(122, 78, 45, 0.14) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .mood-side-button small {
+  color: rgba(75, 53, 34, 0.66) !important;
+}
+
+:root:not(.dark) .mood-side-button.active,
+:root:not(.dark) .mood-side-button:hover {
+  border-color: color-mix(in srgb, var(--mood-accent) 44%, rgba(122, 78, 45, 0.14)) !important;
+  background: color-mix(in srgb, var(--mood-accent) 13%, white) !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .mood-dalil-box,
+:root:not(.dark) .mood-empty {
+  border-color: color-mix(in srgb, var(--mood-accent) 42%, rgba(122, 78, 45, 0.14)) !important;
+  background:
+    radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--mood-accent) 12%, transparent), transparent 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 248, 234, 0.84)) !important;
+  color: #2b2118 !important;
+  box-shadow: 0 22px 60px rgba(122, 78, 45, 0.12) !important;
+}
+
+:root:not(.dark) .mood-dalil-box h1,
+:root:not(.dark) .mood-main h2,
+:root:not(.dark) .mood-empty h3,
+:root:not(.dark) .mood-dalil-box .text-white,
+:root:not(.dark) .mood-main .text-white {
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .mood-dalil-box p,
+:root:not(.dark) .mood-dalil-explanation,
+:root:not(.dark) .mood-main .text-white\/55,
+:root:not(.dark) .mood-main .text-white\/62,
+:root:not(.dark) .mood-main .text-white\/72 {
+  color: rgba(75, 53, 34, 0.78) !important;
+}
+
+:root:not(.dark) .mood-arabic {
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .mood-toolbar input,
+:root:not(.dark) .mood-toolbar select {
+  border-color: rgba(122, 78, 45, 0.14) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .mood-toolbar option {
+  background: #fff8ea !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .mood-aiman-link {
+  background: linear-gradient(135deg, #f4c96c, #d3a348) !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .aiman-page {
+  background:
+    radial-gradient(800px 460px at 12% 6%, rgba(211, 163, 72, 0.18), transparent 64%),
+    radial-gradient(720px 430px at 98% 0%, rgba(10, 125, 120, 0.1), transparent 60%),
+    #fff8ea !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .aiman-side {
+  border-right-color: rgba(122, 78, 45, 0.14) !important;
+  background: rgba(255, 250, 241, 0.88) !important;
+  color: #2b2118 !important;
+  box-shadow: 12px 0 36px rgba(122, 78, 45, 0.08) !important;
+}
+
+:root:not(.dark) .aiman-chat-header,
+:root:not(.dark) .aiman-input-wrap {
+  border-color: rgba(122, 78, 45, 0.14) !important;
+  background: rgba(255, 250, 241, 0.9) !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .aiman-chat-panel,
+:root:not(.dark) .aiman-messages {
+  background: transparent !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .aiman-side .text-white,
+:root:not(.dark) .aiman-side .text-white\/55,
+:root:not(.dark) .aiman-side .text-white\/70,
+:root:not(.dark) .aiman-chat-header .text-white,
+:root:not(.dark) .aiman-chat-header .text-white\/80,
+:root:not(.dark) .aiman-page .text-white,
+:root:not(.dark) .aiman-page .text-white\/80,
+:root:not(.dark) .aiman-page .text-white\/70 {
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .aiman-side .bg-white\/\[0\.06\],
+:root:not(.dark) .aiman-side button.rounded-2xl,
+:root:not(.dark) .aiman-header-call-button,
+:root:not(.dark) .aiman-bubble,
+:root:not(.dark) .aiman-input-wrap textarea {
+  border-color: rgba(122, 78, 45, 0.14) !important;
+  background: rgba(255, 255, 255, 0.76) !important;
+  color: #2b2118 !important;
+  box-shadow: 0 14px 34px rgba(122, 78, 45, 0.08) !important;
+}
+
+:root:not(.dark) .aiman-row.user .aiman-bubble {
+  background: #d3a348 !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .aiman-input-wrap textarea::placeholder {
+  color: rgba(75, 53, 34, 0.52) !important;
+}
+
+:root:not(.dark) .aiman-input-wrap button,
+:root:not(.dark) .aiman-mobile-call-button {
+  border-color: rgba(122, 78, 45, 0.14) !important;
+  background: #d3a348 !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .aiman-meta-card,
+:root:not(.dark) .aiman-dalil-card,
+:root:not(.dark) .aiman-source-links,
+:root:not(.dark) .aiman-bubble a {
+  border-color: rgba(122, 78, 45, 0.14) !important;
+  background: rgba(255, 250, 241, 0.72) !important;
+  color: #2b2118 !important;
+}
+
+@media (max-width: 767px) {
+  :root:not(.dark) body.route-aiman,
+  :root:not(.dark) body.route-aiman::before {
+    background:
+      radial-gradient(circle at 18% 0%, rgba(10, 125, 120, 0.1), transparent 20rem),
+      radial-gradient(circle at 100% 24%, rgba(211, 163, 72, 0.2), transparent 18rem),
+      linear-gradient(180deg, #fffaf1 0%, #f7edda 48%, #fff8ea 100%) !important;
+  }
+
+  :root:not(.dark) .mood-sidebar {
+    border-bottom-color: rgba(122, 78, 45, 0.14) !important;
+    box-shadow: 0 12px 30px rgba(122, 78, 45, 0.08) !important;
+  }
+
+  :root:not(.dark) .mood-button-list.open {
+    background: #fff8ea !important;
+    border-color: rgba(122, 78, 45, 0.14) !important;
+    box-shadow: 0 24px 60px rgba(122, 78, 45, 0.16) !important;
+  }
+}
+
+/* v52: home mobile text contrast in light default */
+:root:not(.dark) .home-hero-title,
+:root:not(.dark) .home-hero-title-line,
+:root:not(.dark) .home-hero-copy {
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .home-hero .section-eyebrow {
+  color: #8b4d1e !important;
+}
+
+:root:not(.dark) .home-stats > div,
+:root:not(.dark) .mobile-mood-journey-hint,
+:root:not(.dark) .mobile-journey-panel,
+:root:not(.dark) .mobile-journey-result {
+  border-color: rgba(122, 78, 45, 0.14) !important;
+  background: rgba(255, 255, 255, 0.62) !important;
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .mobile-journey-panel h2,
+:root:not(.dark) .mobile-journey-result h2,
+:root:not(.dark) .mobile-journey-mood span,
+:root:not(.dark) .mobile-journey-option-list span {
+  color: #2b2118 !important;
+}
+
+:root:not(.dark) .mobile-journey-copy,
+:root:not(.dark) .mobile-journey-mood small,
+:root:not(.dark) .mobile-journey-option-list small,
+:root:not(.dark) .mobile-journey-note-actions span,
+:root:not(.dark) .mobile-journey-result-copy > p:not(.mobile-journey-kicker) {
+  color: rgba(75, 53, 34, 0.72) !important;
+}
+
+@media (max-width: 767px) {
+  :root:not(.dark) .home-hero-title,
+  :root:not(.dark) .home-hero-title-line,
+  :root:not(.dark) .home-hero-copy,
+  :root:not(.dark) .home-stats > div {
+    color: #2b2118 !important;
+    opacity: 1 !important;
+  }
+}
+
+/* v53: sidang revision - all page headers render in full caps */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.section-eyebrow,
+header,
+header a,
+header button,
+header p,
+.desktop-brand p,
+.desktop-menu-link,
+.mobile-app-topbar,
+.mobile-brand-lockup,
+.mobile-user-pill,
+.mobile-login-btn,
+.mobile-nav-panel,
+.mobile-nav-card,
+.mobile-bottom-nav,
+.mobile-bottom-nav-item,
+.aiman-chat-header,
+.aiman-chat-header p,
+.aiman-header-call-button,
+.mood-dalil-head,
+.mood-side-button strong,
+.mood-badge,
+.account-page .premium-card > div > p:first-child {
+  text-transform: uppercase !important;
+}

@@ -30,8 +30,8 @@ export default function FavoriteFilms() {
                 <LazyPoster
                   src={movie.poster}
                   alt={movie.title}
-                  className="aspect-[2/3]"
-                  fallback={<div className="grid aspect-[2/3] place-items-center text-4xl">🎬</div>}
+                  className="film-poster-a4"
+                  fallback={<div className="grid h-full place-items-center text-xs font-black">Poster</div>}
                 />
               </a>
               <div className="min-w-0 flex-1">

@@ -584,7 +584,16 @@ function SplashScreen({ onDone }) {
 
 function App() {
   const [path, setPath] = useState(getPath());
-  const [theme, setThemeState] = useState(() => localStorage.getItem('iim-theme') || 'dark');
+  const [theme, setThemeState] = useState(() => {
+    const storedTheme = localStorage.getItem('iim-theme');
+    const migratedLightDefault = localStorage.getItem('iim-light-default-v1');
+    if (!migratedLightDefault && storedTheme === 'dark') {
+      localStorage.setItem('iim-light-default-v1', '1');
+      localStorage.setItem('iim-theme', 'light');
+      return 'light';
+    }
+    return storedTheme || 'light';
+  });
   const [language, setLanguage] = useState('id');
   const swipeRef = React.useRef({ x: 0, y: 0, t: 0 });
   // Always show splash on every full page refresh/reload.
