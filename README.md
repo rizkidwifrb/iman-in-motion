@@ -1,280 +1,364 @@
+<div align="center">
+
 # IMAN IN MOTION
 
-IMAN IN MOTION adalah web app rekomendasi film berbasis mood dengan konteks refleksi Islami. Frontend utama memakai React, Vite, dan Tailwind CSS. Backend Express dipakai untuk AIMAN chat, rekomendasi, RAG dalil, sinkronisasi rating TMDB, trailer, dan endpoint pendukung.
+### Mood-Based Islamic Movie Recommendation Platform
 
-Project ini bukan tempat streaming film. Aplikasi membantu pengguna menemukan tontonan yang relevan dengan suasana hati, membaca detail film, menyimpan favorit, membuka artikel reflektif, dan bertanya ke AIMAN.
+A modern web application that recommends movies based on users' emotional states while encouraging Islamic reflection through AI-assisted conversations, knowledge retrieval, and personalized recommendations.
 
-## Fitur Utama
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
+![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite)
+![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-38BDF8?logo=tailwindcss)
+![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js)
+![Firebase](https://img.shields.io/badge/Firebase-Authentication-FFCA28?logo=firebase)
+![License](https://img.shields.io/badge/License-Copyright-blue)
+![Status](https://img.shields.io/badge/Status-Active-success)
 
-- Rekomendasi film berdasarkan mood.
-- Halaman film lengkap dengan filter, sort, detail film, rating, poster, trailer, dan favorit.
-- AIMAN chat berbasis backend Express dan Groq.
-- RAG dalil dan basis pengetahuan project.
-- Login/register dengan Firebase.
-- Statistik mood dan riwayat aktivitas akun.
-- Artikel reflektif berbasis film.
-- Fallback halaman statis di `public/`.
-- Script enrichment untuk rating TMDB dan trailer.
-- Pipeline tambahan untuk ML, scheduler, monitoring, dan deployment.
+**Developed by**
+### Rizki Dwi Febriansyah, S.Sos.
 
-## Tech Stack
+Visual Specialist • Digital Product Designer • Web Developer
 
-- Frontend: React 18, Vite, Tailwind CSS, AOS, Lucide React.
-- Backend: Node.js, Express, CORS, csv-parser, Groq SDK.
-- Auth dan data user: Firebase client config.
-- Data film: `src/data/movies.js`, `public/js/movies.js`, dan `df_processed.csv`.
-- Deployment: Vercel/Railway/Docker ready.
+</div>
 
-## Struktur File
+---
 
-```text
-iim_react_work/
-|-- README.md                         # Dokumentasi utama project
-|-- package.json                      # Script npm dan dependency
-|-- vite.config.mjs                   # Konfigurasi Vite
-|-- tailwind.config.cjs               # Konfigurasi Tailwind
-|-- postcss.config.cjs                # Konfigurasi PostCSS
-|-- app.js                            # Backend Express utama dan static server production
-|-- index.html                        # Entry HTML untuk Vite React
-|-- df_processed.csv                  # Dataset film CSV
-|-- Dockerfile                        # Build image aplikasi
-|-- docker-compose.yml                # Compose untuk service pendukung
-|-- vercel.json                       # Konfigurasi deploy Vercel
-|-- railway.json                      # Konfigurasi deploy Railway
-|
-|-- src/
-|   |-- main.jsx                      # Entry React, routing hash, navbar, splash, layout app
-|   |-- components/                   # Komponen UI reusable
-|   |-- components/account/           # Komponen halaman akun
-|   |-- data/                         # Data film dan artikel versi React
-|   |-- hooks/                        # Hook auth, favorit, mood analytics
-|   |-- pages/                        # Halaman Home, Mood, Film, Detail, Artikel, AIMAN, Info, Account
-|   |-- services/                     # API client, rekomendasi, RAG, mood engine
-|   |-- styles/                       # CSS global dan override responsif
-|   `-- utils/                        # Helper asset, Firebase, i18n, rating, trailer, storage
-|
-|-- public/
-|   |-- index.html                    # Fallback static page lama
-|   |-- film.html                     # Fallback static halaman film
-|   |-- mood.html                     # Fallback static halaman mood
-|   |-- artikel.html                  # Fallback static artikel
-|   |-- aiman.html                    # Fallback static AIMAN
-|   |-- info.html                     # Fallback static info
-|   |-- js/                           # Data/script public lama
-|   |-- *.css                         # CSS fallback/mobile legacy
-|   |-- logo.png                      # Logo aplikasi
-|   `-- sertifikat-hak-cipta-iman-in-motion.pdf
-|
-|-- backend/
-|   |-- knowledge/                    # Basis pengetahuan AIMAN/RAG
-|   |-- lib/                          # Helper backend
-|   |-- ml/                           # Modul machine learning backend
-|   `-- services/                     # Service rekomendasi, RAG, scheduler
-|
-|-- api/                              # Adapter endpoint/serverless
-|-- data/                             # Cache dan data runtime
-|-- scripts/                          # Script sinkron data, TMDB, trailer, audit, C++ ranker
-|-- mlops/                            # Training, validasi, cache, rollback, watchdog model
-|-- monitoring/                       # Monitoring runtime
-|-- deploy/                           # File pendukung deployment
-|-- docs/                             # Dokumentasi tambahan
-|-- dist/                             # Output build Vite, hasil `npm run build`
-|-- logs/                             # Log lokal/runtime
-`-- node_modules/                     # Dependency lokal, tidak diedit manual
+# About
+
+IMAN IN MOTION is an AI-powered movie recommendation platform designed to connect emotional well-being with meaningful Islamic reflection.
+
+Instead of providing movie streaming services, the platform helps users discover films that match their current mood, explore detailed movie information, save favorites, read reflective articles, and interact with an AI assistant named AIMAN.
+
+The project integrates recommendation systems, Retrieval-Augmented Generation (RAG), conversational AI, Firebase Authentication, and TMDB enrichment into one modern web application.
+
+This project was developed as a Practice-Based Final Project (Non-Thesis) and has been officially registered as an Intellectual Property (Copyright) with the Directorate General of Intellectual Property (DJKI), Republic of Indonesia.
+
+---
+
+# Key Features
+
+- Mood-based movie recommendation
+- AI Assistant (AIMAN)
+- Islamic Reflection Articles
+- Retrieval-Augmented Generation (RAG)
+- Firebase Authentication
+- Personal Watchlist
+- Favorite Movies
+- Mood Analytics
+- Movie Search & Filtering
+- TMDB Rating Synchronization
+- YouTube Trailer Integration
+- Responsive User Interface
+- Legacy Static Fallback
+- Deployment Ready
+
+---
+
+# Technology Stack
+
+## Frontend
+
+- React 18
+- Vite
+- Tailwind CSS
+- Lucide React
+- AOS
+
+## Backend
+
+- Node.js
+- Express.js
+- Groq API
+- REST API
+
+## Database & Authentication
+
+- Firebase Authentication
+- Firebase Firestore
+
+## Machine Learning
+
+- Content-Based Recommendation
+- Mood Mapping
+- Similarity Engine
+- Dataset Processing
+
+## AI
+
+- Groq LLM
+- Retrieval-Augmented Generation (RAG)
+- Knowledge Base
+- Prompt Engineering
+
+## External Services
+
+- TMDB API
+- YouTube Trailer
+- Firebase
+
+---
+
+# Project Architecture
+
+```
+React + Vite
+      │
+      ▼
+Express API
+      │
+      ├── AIMAN Chat
+      ├── Recommendation Engine
+      ├── RAG Knowledge
+      ├── TMDB Integration
+      └── Trailer Service
+              │
+              ▼
+Firebase Authentication
 ```
 
-## File Penting
+---
 
-- `src/pages/Film.jsx`: halaman daftar film React.
-- `src/components/FilmCard.jsx`: kartu film.
-- `src/pages/FilmDetail.jsx`: halaman detail film.
-- `src/pages/Aiman.jsx`: halaman chat AIMAN.
-- `src/services/recommendationService.js`: logika filter, mood, data film, dan rekomendasi.
-- `src/services/api.js`: client API frontend.
-- `src/styles/index.css`: styling global dan override responsif.
-- `app.js`: server Express, endpoint AIMAN, endpoint film, endpoint trailer/rating, dan serve `dist/`.
-- `scripts/enrich_tmdb.py`: update metadata/rating TMDB.
-- `scripts/add_trailer_urls.py`: update trailer.
-- `scripts/sync_movies_data.mjs`: sinkron data film.
+# Main Features
 
-## Persiapan Environment
+## Mood Recommendation
 
-Salin `.env.example` menjadi `.env` untuk lokal.
+Users select their emotional condition.
+
+The recommendation engine suggests movies that align with the selected mood while maintaining positive values.
+
+---
+
+## AIMAN
+
+AIMAN is an AI assistant capable of:
+
+- Answering questions
+- Providing Islamic reflections
+- Recommending movies
+- Explaining concepts
+- Accessing project knowledge through RAG
+
+---
+
+## Movie Database
+
+Includes
+
+- Posters
+- Ratings
+- Genres
+- Runtime
+- Overview
+- Cast
+- Trailer
+- Favorites
+
+---
+
+## Reflection Articles
+
+Each article encourages users to connect movie experiences with Islamic values and self-reflection.
+
+---
+
+## Analytics
+
+Users can view
+
+- Mood history
+- Favorite movies
+- Recommendation history
+
+---
+
+# Folder Structure
+
+```
+src/
+components/
+pages/
+services/
+hooks/
+utils/
+styles/
+data/
+
+backend/
+knowledge/
+services/
+ml/
+
+scripts/
+
+public/
+
+api/
+
+docs/
+
+deploy/
+
+monitoring/
+```
+
+---
+
+# Installation
 
 ```bash
-copy .env.example .env
-```
+git clone https://github.com/USERNAME/iman-in-motion.git
 
-Isi variabel sesuai kebutuhan:
+cd iman-in-motion
 
-```env
-VITE_API_BASE_URL=
-VITE_FIREBASE_API_KEY=
-VITE_FIREBASE_AUTH_DOMAIN=
-VITE_FIREBASE_PROJECT_ID=
-VITE_FIREBASE_STORAGE_BUCKET=
-VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
-VITE_FIREBASE_MEASUREMENT_ID=
-
-GROQ_API_KEY=
-GROQ_MODEL=llama-3.1-70b-versatile
-TMDB_API_KEY=
-TMDB_READ_TOKEN=
-TMDB_BEARER_TOKEN=
-PORT=8080
-```
-
-Catatan:
-
-- Kosongkan `VITE_API_BASE_URL` jika frontend dan backend berada pada domain yang sama.
-- Isi `VITE_API_BASE_URL` jika frontend static memakai backend terpisah.
-- Jangan commit `.env`, `.env.local`, atau secret API key.
-
-## Cara Install
-
-```bash
 npm install
 ```
 
-## Cara Menjalankan Lokal
+---
 
-Untuk frontend React:
+# Environment Variables
+
+Create
+
+```
+.env
+```
+
+Example
+
+```env
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_PROJECT_ID=
+VITE_API_BASE_URL=
+
+GROQ_API_KEY=
+
+TMDB_API_KEY=
+
+PORT=8080
+```
+
+Never commit your secret keys.
+
+---
+
+# Running Locally
+
+Frontend
 
 ```bash
 npm run dev
 ```
 
-Buka:
-
-```text
-http://localhost:5173
-```
-
-Untuk backend Express AIMAN/API:
+Backend
 
 ```bash
 npm start
 ```
 
-Default backend memakai `PORT=8080` jika diisi di `.env`.
+---
 
-Mode development umum:
-
-1. Terminal 1: `npm start`
-2. Terminal 2: `npm run dev`
-3. Buka `http://localhost:5173`
-
-## Cara Build Production
+# Build Production
 
 ```bash
 npm run build
+
 npm start
 ```
 
-Setelah build, Vite menulis output ke `dist/`. Server `app.js` akan serve React app dari `dist/` dan tetap menyediakan fallback file lama dari `public/`.
+---
 
-## Script NPM
+# Deployment
 
-```text
-npm run dev                  # Jalankan frontend Vite
-npm run build                # Build frontend ke dist/
-npm run preview              # Preview hasil build Vite
-npm start                    # Jalankan backend Express app.js
-npm run start:api            # Alias untuk node app.js
-npm run start:recommendation # Jalankan service rekomendasi
-npm run start:rag            # Jalankan service RAG
-npm run start:scheduler      # Jalankan scheduler backend
-npm run ratings              # Enrich rating film dari TMDB
-npm run trailers             # Enrich trailer YouTube
-npm run enrich:tmdb          # Rating + trailer sekaligus
-npm run sync:movies          # Sinkron data film
-npm run audit:data           # Audit data media
-npm run build:cpp            # Build C++ ranker opsional
-npm run ml:train             # Train model ML dan promote
-npm run ml:validate          # Validasi model ML
-npm run ml:rollback          # Rollback model ML
-npm run ml:backup            # Backup model/data ML
-npm run ml:health            # Health check ML
-npm run ml:cache             # Refresh cache ML
-npm run ml:watchdog          # Watchdog ML
+Supported deployment
+
+- Vercel
+- Railway
+- Docker
+- VPS
+- Node.js Hosting
+
+---
+
+# Research Background
+
+IMAN IN MOTION was developed as an academic digital product to explore the intersection between
+
+- Artificial Intelligence
+- Recommendation Systems
+- Digital Communication
+- Islamic Media
+- Human-Computer Interaction
+
+The project demonstrates how emotion-aware recommendation systems can be combined with reflective content and conversational AI to create a meaningful digital experience.
+
+---
+
+# Intellectual Property
+
+This software has been officially registered under the Indonesian Directorate General of Intellectual Property (DJKI).
+
+**Copyright Holder**
+
+Rizki Dwi Febriansyah
+
+For legal information, please refer to the certificate included in this repository.
+
+```
+public/
+└── sertifikat-hak-cipta-iman-in-motion.pdf
 ```
 
-## Cara Update Data Film, Rating, dan Trailer
+---
 
-Update data dari CSV ke sumber JS:
+# Author
 
-```bash
-npm run sync:movies
+## Rizki Dwi Febriansyah, S.Sos.
+
+Visual Specialist
+
+Bogor, Indonesia
+
+Specializations
+
+- UI/UX Design
+- Graphic Design
+- Web Development
+- Artificial Intelligence
+- Digital Communication
+- Creative Technology
+
+LinkedIn
+
+```
+https://linkedin.com/in/USERNAME
 ```
 
-Update rating TMDB:
+Portfolio
 
-```bash
-npm run ratings
+```
+https://YOUR-WEBSITE
 ```
 
-Update trailer:
+IMAN IN MOTION
 
-```bash
-npm run trailers
+```
+https://iman-in-motion.web.id
 ```
 
-Update rating dan trailer sekaligus:
+---
 
-```bash
-npm run enrich:tmdb
-```
+# License
 
-Lalu build ulang:
+Copyright © 2026
 
-```bash
-npm run build
-```
+All Rights Reserved.
 
-## Cara Deploy
+Unauthorized copying, modification, distribution, or commercial use of this software without written permission from the copyright holder is prohibited.
 
-Railway atau server Node:
+---
 
-```bash
-npm install
-npm run build
-npm start
-```
+<div align="center">
 
-Vercel:
+Built with ❤️ in Indonesia
 
-- Build command: `npm run build`
-- Output directory: `dist`
-- Pastikan environment variable frontend `VITE_*` tersedia saat build.
-- Jika butuh backend Express penuh, gunakan hosting Node terpisah atau konfigurasi adapter di `api/`.
-
-Docker:
-
-```bash
-docker build -t iman-in-motion .
-docker run --env-file .env -p 8080:8080 iman-in-motion
-```
-
-Docker Compose:
-
-```bash
-docker compose up --build
-```
-
-## Alur Pengembangan
-
-1. Edit halaman React di `src/pages/`.
-2. Edit komponen di `src/components/`.
-3. Edit logika data/rekomendasi di `src/services/`.
-4. Edit style global di `src/styles/index.css`.
-5. Jalankan `npm run dev` untuk cek cepat.
-6. Jalankan `npm run build` sebelum deploy.
-
-## Catatan Penting
-
-- Jangan edit file di `node_modules/`.
-- Jangan edit output `dist/` sebagai sumber utama. Edit `src/`, lalu build.
-- `public/` masih dipakai untuk asset dan fallback legacy.
-- File `README_*.md` adalah catatan fitur/update khusus.
-- Secret API key hanya disimpan di `.env` lokal atau environment hosting.
+</div>
